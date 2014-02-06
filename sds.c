@@ -352,7 +352,7 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
  *
  * Output will be just "Hello World".
  */
-sds sdstrim(sds s, const char *cset) {
+void sdstrim(sds s, const char *cset) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
     char *start, *end, *sp, *ep;
     size_t len;
@@ -366,7 +366,6 @@ sds sdstrim(sds s, const char *cset) {
     sh->buf[len] = '\0';
     sh->free = sh->free+(sh->len-len);
     sh->len = len;
-    return s;
 }
 
 /* Turn the string into a smaller (or equal) string containing only the
@@ -807,7 +806,8 @@ int main(void) {
             sdslen(x) == 3 && memcmp(x,"123\0",4) ==0)
 
         sdsfree(x);
-        x = sdstrim(sdsnew("xxciaoyyy"),"xy");
+        x = sdsnew("xxciaoyyy");
+        sdstrim(x,"xy");
         test_cond("sdstrim() correctly trims characters",
             sdslen(x) == 4 && memcmp(x,"ciao\0",5) == 0)
 
