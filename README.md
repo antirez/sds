@@ -109,13 +109,13 @@ program holds an SDS string and not a C string, however this is not mandatory.
 
 This is the simplest SDS program you can write that does something:
 
-    ```c
-    sds mystring = sdsnew("Hello World!");
-    printf("%s\n", mystring);
-    sdsfree(mystring);
+```c
+sds mystring = sdsnew("Hello World!");
+printf("%s\n", mystring);
+sdsfree(mystring);
 
-    output> Hello World!
-    ```
+output> Hello World!
+```
 
 The above small program already shows a few important things about SDS:
 
