@@ -275,14 +275,14 @@ Because `sdscatprintf` is actually a function that concatenates strings all
 you need is to concatenate your string to an empty string:
 
     char *name = "Anna";
-    int age = 2500;
+    int loc = 2500;
     sds s;
-    s = sdscatprintf(sdsempty(), "%s wrote %d lines of LISP\n", name, age);
+    s = sdscatprintf(sdsempty(), "%s wrote %d lines of LISP\n", name, loc);
 
 You can use `sdscatprintf` in order to convert numbers into SDS strings:
 
     int some_integer = 100;
-    sds num = sdscatprintf(sdsempty(),"%s\n", some_integer);
+    sds num = sdscatprintf(sdsempty(),"%d\n", some_integer);
 
 However this is slow and we have a special function to make it efficient.
 
