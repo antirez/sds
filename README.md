@@ -205,7 +205,7 @@ Concatenating strings
 
 Concatenating strings to other strings is likely the operation you will end
 using the most with a dynamic C string library. SDS provides different
-functions to do concatenate to existing strings:
+functions to concatenate strings to existing strings.
 
     sds sdscatlen(sds s, const void *t, size_t len);
     sds sdscat(sds s, const char *t);
