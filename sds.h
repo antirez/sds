@@ -33,6 +33,7 @@
 
 #define SDS_MAX_PREALLOC (1024*1024)
 
+#include <stddef.h>
 #include <sys/types.h>
 #include <stdarg.h>
 
@@ -44,13 +45,23 @@ struct sdshdr {
     char buf[];
 };
 
+static inline void *sds_start(const sds s)
+{
+#ifdef USE_OFFSETOFF
+    static int sds_buf_offset = (int)offsetof(struct sdshdr, buf);
+    return s - sds_buf_offset;
+#else
+    return s-sizeof(struct sdshdr);
+#endif
+}
+
 static inline size_t sdslen(const sds s) {
-    struct sdshdr *sh = (void*)(s-sizeof *sh);
+    struct sdshdr *sh = sds_start(s);
     return sh->len;
 }
 
 static inline size_t sdsavail(const sds s) {
-    struct sdshdr *sh = (void*)(s-sizeof *sh);
+    struct sdshdr *sh = sds_start(s);
     return sh->free;
 }
 
