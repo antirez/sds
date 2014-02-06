@@ -325,7 +325,7 @@ You can use `sdscatprintf` in order to convert numbers into SDS strings:
 
 ```c
 int some_integer = 100;
-sds num = sdscatprintf(sdsempty(),"%s\n", some_integer);
+sds num = sdscatprintf(sdsempty(),"%d\n", some_integer);
 ```
 
 However this is slow and we have a special function to make it efficient.
