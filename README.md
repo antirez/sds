@@ -228,9 +228,9 @@ Destroying strings
 void sdsfree(sds s);
 ```
 
-The destroy an SDS string there is just to call `sdsfree` with the string
+To destroy an SDS string just call `sdsfree` with the string
 pointer. Note that even empty strings created with `sdsempty` need to be
-destroyed as well otherwise they'll result into a memory leak.
+destroyed as otherwise they'll result in a memory leak.
 
 The function `sdsfree` does not perform any operation if instead of an SDS
 string pointer, `NULL` is passed, so you don't need to check for `NULL` explicitly before calling it:
@@ -328,7 +328,7 @@ s = sdscatprintf(s,"%d+%d = %d",a,b,a+b);
 
 Often you need to create SDS string directly from `printf` format specifiers.
 Because `sdscatprintf` is actually a function that concatenates strings, all
-you need is to concatenate your string to an empty string:
+you need to do is to concatenate your string to an empty string:
 
 
 ```c
@@ -464,7 +464,7 @@ buffers that are easy to manage.
 String copying
 ---
 
-The most dangerous and infamus function of the standard C library is probably
+The most dangerous and infamous function of the standard C library is probably
 `strcpy`, so perhaps it is funny how in the context of better designed dynamic
 string libraries the concept of copying strings is almost irrelevant. Usually
 what you do is to create strings with the content you want, or concatenating
@@ -533,7 +533,7 @@ existing string the quoted string representation of the input string.
 sds sdscatrepr(sds s, const char *p, size_t len);
 ```
 
-The `scscatrepr` (where `repr` means *representation*) follows the usualy
+The `sdscatrepr` (where `repr` means *representation*) follows the usually
 SDS string function rules accepting a char pointer and a length, so you can
 use it with SDS strings, normal C strings by using strlen() as `len` argument,
 or binary data. The following is an example usage:
@@ -578,7 +578,7 @@ A more common separator that consists of a single character is the comma:
 foo,bar,zap
 ```
 
-In many progrems it is useful to process a line in order to obtain the sub
+In many programs it is useful to process a line in order to obtain the sub
 strings it is composed of, so SDS provides a function that returns an
 array of SDS strings given a string and a separator.
 
@@ -612,7 +612,7 @@ output> World!
 
 The returned array is heap allocated, and the single elements of the array
 are normal SDS strings. You can free everything calling `sdsfreesplitres`
-as in the example. Alternativey you are free to release the array yourself
+as in the example. Alternatively you are free to release the array yourself
 using the `free` function and use and/or free the individual SDS strings
 as usually.
 
@@ -689,7 +689,7 @@ Error handling
 All the SDS functions that return an SDS pointer may also return `NULL` on
 out of memory, this is basically the only check you need to perform.
 
-However many modern C programs handle out of memory simply aborting the program
+However many modern C programs handle out of memory by simply aborting the program
 so you may want to do this as well by wrapping `malloc` and other related
 memory allocation calls directly.
 
@@ -866,7 +866,7 @@ you can mount using the low level API exported, that is used inside Redis
 in order to improve performances of the networking code.
 
 Using `sdsIncrLen()` and `sdsMakeRoomFor()` it is possible to mount the
-following schema, to cat bytes coming from the kernel to the end of an
+following schema to cat bytes coming from the kernel to the end of an
 sds string without copying into an intermediate buffer:
 
 ```c
@@ -889,7 +889,7 @@ it without issues.
 Credits and license
 ===
 
-SDS was created by Salvatore Sanfilippo and is released under the BDS two clause license. See the LICENSE file in this source distribution for more information.
+SDS was created by Salvatore Sanfilippo and is released under the BSD two clause license. See the LICENSE file in this source distribution for more information.
 
 Oran Agra improved SDS version 2 by adding dynamic sized headers in order to
 save memory for small strings and allow strings greater than 4GB.
