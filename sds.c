@@ -759,13 +759,25 @@ sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen) {
 
 /* Join an array of C strings using the specified separator (also a C string).
  * Returns the result as an sds string. */
-sds sdsjoin(char **argv, int argc, char *sep) {
+sds sdsjoin(char **argv, int argc, char *sep, size_t seplen) {
     sds join = sdsempty();
     int j;
 
     for (j = 0; j < argc; j++) {
         join = sdscat(join, argv[j]);
-        if (j != argc-1) join = sdscat(join,sep);
+        if (j != argc-1) join = sdscatlen(join,sep,seplen);
+    }
+    return join;
+}
+
+/* Like sdsjoin, but joins an array of SDS strings. */
+sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen) {
+    sds join = sdsempty();
+    int j;
+
+    for (j = 0; j < argc; j++) {
+        join = sdscatsds(join, argv[j]);
+        if (j != argc-1) join = sdscatlen(join,sep,seplen);
     }
     return join;
 }
