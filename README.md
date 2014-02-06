@@ -423,8 +423,133 @@ one only if needed.
 Quoting strings
 ---
 
+In order to provide consistent output to the program user, or for debugging
+purposes, it is often important to turn a string that may contain binary
+data or special characters into a quoted string. Here for quoted string
+we mean the common format for String literals in programming source code.
+However today this format is also part of the well known serialization formats
+like JSON and CSV, so it definitely escaped the simple gaol of representing
+literals strings in the source code of programs.
+
+An example of quoted string literal is the following:
+
+    "\x00Hello World\n"
+
+The first byte is a zero byte while the last byte is a newline, so there are
+two non alphanumerical characters inside the string.
+
+SDS uses a concatenation function for this goal, that concatenates to an
+existing string the quoted string representation of the input string.
+
+    sds sdscatrepr(sds s, const char *p, size_t len);
+
+The `scscatrepr` (where `repr` means *representation*) follows the usualy
+SDS string function rules accepting a char pointer and a length, so you can
+use it with SDS strings, normal C strings by using strlen() as `len` argument,
+or binary data. The following is an example usage:
+
+    sds s1 = sdsnew("abcd");
+    sds s2 = sdsempty();
+    s[1] = 1;
+    s[2] = 2;
+    s[3] = '\n';
+    s2 = sdscatrepr(s2,s1,sdslen(s1));
+    printf("%s\n", s2);
+
+    output> "a\x01\x02\n"
+
+This is the rules `sdscatrepr` uses for conversion:
+
+* `\` and `"` are quoted with a backslash.
+* It quotes special characters '\n', '\r', '\t', '\a' and '\b'.
+* All the other non printable characters not passing the `isprint` test are quoted in \x..` form, that is: backslash followed by `x` followed by two digit hex number representing the character byte value.
+* The function always adds initial and final double quotes characters.
+
+There is an SDS function that is able to perform the reverse conversion and is
+documented in the *Tokenization* paragraph below.
+
 Tokenization
 ---
+
+Tokenization is the process of splitting a larger string into smaller strings.
+In this specific case, the split is performed specifying another string that
+acts as separator. For example in the following string there are two substrings
+that are separated by the |-| separator:
+
+    foo|-|bar|-|zap
+
+A more common separator that consists of a single character is the comma:
+
+    foo,bar,zap
+
+In many progrems it is useful to process a line in order to obtain the sub
+strings it is composed of, so SDS provides a function that returns an
+array of SDS strings given a string and a separator.
+
+    sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count);
+    void sdsfreesplitres(sds *tokens, int count);
+
+As usually the function can work with both SDS strings or normal C strings.
+The first two arguments `s` and `len` specify the string to tokenize, and the
+other two arguments `sep` and `seplen` the separator to use during the
+tokenization. The final argument `count` is a pointer to an integer that will
+be set to the number of tokens (sub strings) returned.
+
+The return value is a heap allocated array of SDS strings.
+
+    sds *tokens;
+    int count, j;
+
+    sds line = sdsnew("Hello World!");
+    tokens = sdssplitlen(line,sdslen(line)," ",1,&count);
+
+    for (j = 0; j < count; j++)
+        printf("%s\n", tokens[j]);
+    sdsfreesplitres(tokens,count);
+
+    output> Hello
+    output> World!
+
+The returned array is heap allocated, and the single elements of the array
+are normal SDS strings. You can free everything calling `sdsfreesplitres`
+as in the example. Alternativey you are free to release the array yourself
+using the `free` function and use and/or free the individual SDS strings
+as usually.
+
+A valid approach is to set the array elements you reused in some way to
+`NULL`, and use `sdsfreesplitres` to free all the rest.
+
+Command line oriented tokenization
+---
+
+Splitting by a separator is a useful operation, but usually it is not enough
+to perform one of the most common tasks involving some non trivial string
+manipulation, that is, implementing a **Command Line Interface** for a program.
+
+This is why SDS also provides an additional function that allows you to split
+arguments provided by the user via the keyboard in an interactive manner, or
+via a file, network, or any other mean, into tokens.
+
+    sds *sdssplitargs(const char *line, int *argc);
+
+The `sdssplitargs` function returns an array of SDS strings exactly like
+`sdssplitlen`. The function to free the result is also identical, and is
+`sdsfreesplitres`. The difference is in the way the tokenization is performed.
+
+For example if the input is the following line:
+
+    call "Sabrina"    and "Mark Smith\n"
+
+The function will return the following tokens:
+
+* "call"
+* "Sabrina"
+* "and"
+* "Mark Smith\n"
+
+Basically different tokens need to be separated by one or more spaces, and
+every single token can also be a quoted string in the same format that
+`sdscatrepr` is able to emit.
 
 Error handling
 ---
