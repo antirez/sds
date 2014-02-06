@@ -864,6 +864,13 @@ int main(void) {
         y = sdsnew("bar");
         test_cond("sdscmp(bar,bar)", sdscmp(x,y) < 0)
 
+        sdsfree(y);
+        sdsfree(x);
+        x = sdsnewlen("\a\n\0foo\r",7);
+        y = sdscatrepr(sdsempty(),x,sdslen(x));
+        test_cond("sdscatrepr(...data...)",
+            memcmp(y,"\"\\a\\n\\x00foo\\r\"",15) == 0)
+
         {
             int oldfree;
 
