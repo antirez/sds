@@ -461,7 +461,7 @@ This is the rules `sdscatrepr` uses for conversion:
 
 * `\` and `"` are quoted with a backslash.
 * It quotes special characters '\n', '\r', '\t', '\a' and '\b'.
-* All the other non printable characters not passing the `isprint` test are quoted in \x..` form, that is: backslash followed by `x` followed by two digit hex number representing the character byte value.
+* All the other non printable characters not passing the `isprint` test are quoted in `\x..` form, that is: backslash followed by `x` followed by two digit hex number representing the character byte value.
 * The function always adds initial and final double quotes characters.
 
 There is an SDS function that is able to perform the reverse conversion and is
