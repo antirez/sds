@@ -118,38 +118,45 @@ Creating SDS strings
 
 There are many ways to create SDS strings:
 
-The `sdsnew` function creates an SDS string starting from a C null terminated string. We already saw how it works in the above example. The `sdsnewlen` function is similar to `sdsnew` but instead of creating the string assuming that the input string is null terminated, it gets an additional length parameter. This way you can create a string using binary data:
+* The `sdsnew` function creates an SDS string starting from a C null terminated string. We already saw how it works in the above example.
+* The `sdsnewlen` function is similar to `sdsnew` but instead of creating the string assuming that the input string is null terminated, it gets an additional length parameter. This way you can create a string using binary data:
 
-    char buf[3];
-    sds mystring;
 
-    buf[0] = 'A';
-    buf[1] = 'B';
-    buf[2] = 'C';
-    mystring = sdsnewlen(buf,3);
-    printf("%s of len %d\n", mystring, (int) sdslen(mystring));
+        char buf[3];
+        sds mystring;
+
+        buf[0] = 'A';
+        buf[1] = 'B';
+        buf[2] = 'C';
+        mystring = sdsnewlen(buf,3);
+        printf("%s of len %d\n", mystring, (int) sdslen(mystring));
     
-    output> ABC of len 3
+        output> ABC of len 3
+
 
 Note: `sdslen` return value is casted to `int` because it returns a `size_t`
 type. You can use the right `printf` specifier instead of casting.
 
-The `sdsempty()` function creates an empty zero-length string:
+* The `sdsempty()` function creates an empty zero-length string:
 
-    sds mystring = sdsempty();
-    printf("%d\n", (int) sdslen(mystring));
 
-    output> 0
+        sds mystring = sdsempty();
+        printf("%d\n", (int) sdslen(mystring));
 
-Finally the `sdsdup()` function duplicates an already existing SDS string:
+        output> 0
 
-    sds s1, s2;
 
-    s1 = sdsnew("Hello");
-    s2 = sdsdup(s1);
-    printf("%s %s\n", s1, s2);
+* The `sdsdup()` function duplicates an already existing SDS string:
 
-    output> Hello Hello
+
+        sds s1, s2;
+
+        s1 = sdsnew("Hello");
+        s2 = sdsdup(s1);
+        printf("%s %s\n", s1, s2);
+
+        output> Hello Hello
+
 
 Obtaining the string length
 ---
