@@ -267,7 +267,7 @@ Example:
 
     sds s;
     int a = 10, b = 20;
-    s = sdsempty("The sum is: ");
+    s = sdsnew("The sum is: ");
     s = sdscatprintf(s,"%d+%d = %d",a,b,a+b);
 
 Often you need to create SDS string directly from printf format specifiers.
