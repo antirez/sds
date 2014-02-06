@@ -50,7 +50,7 @@ struct yourAverageStringLibrary {
 };
 ```
 
-SDS strings are already mentioned don't follow this schema, and are instead
+SDS strings as already mentioned don't follow this schema, and are instead
 a single allocation with a prefix that lives *before* the address actually
 returned for the string.
 
