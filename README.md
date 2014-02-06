@@ -133,6 +133,7 @@ There are many ways to create SDS strings:
     
     output> ABC of len 3
 
+
 Note: `sdslen` return value is casted to `int` because it returns a `size_t`
 type. You can use the right `printf` specifier instead of casting.
 
@@ -144,6 +145,7 @@ type. You can use the right `printf` specifier instead of casting.
 
     output> 0
 
+
 * The `sdsdup()` function duplicates an already existing SDS string:
 
 
@@ -154,6 +156,7 @@ type. You can use the right `printf` specifier instead of casting.
     printf("%s %s\n", s1, s2);
 
     output> Hello Hello
+
 
 Obtaining the string length
 ---
