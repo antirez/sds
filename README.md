@@ -135,7 +135,7 @@ There are many ways to create SDS strings:
         output> ABC of len 3
 
 
-Note: `sdslen` return value is casted to `int` because it returns a `size_t`
+  Note: `sdslen` return value is casted to `int` because it returns a `size_t`
 type. You can use the right `printf` specifier instead of casting.
 
 * The `sdsempty()` function creates an empty zero-length string:
