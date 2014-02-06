@@ -55,7 +55,7 @@ returned for the string.
 There are advantages and disadvantages with this approach over the traditional
 approach:
 
-* Disadvantage #1: many functions return the new string as value, since sometimes SDS requires to create a new string with more space, so the most SDS API calls look like this:
+**Disadvantage #1**: many functions return the new string as value, since sometimes SDS requires to create a new string with more space, so the most SDS API calls look like this:
 
     s = sdscat(s,"Some more data");
 
@@ -65,8 +65,9 @@ SDS string we passed or allocated a new one. Not remembering to assign back
 the return value of `sdscat` or similar functions to the variable holding
 the SDS string will result in a bug.
 
-* Disadvantage #2: if an SDS string is shared in different places in your program you have to modify all the references when you modify the string. However most of the times when you need to share SDS strings it is much better to encapsulate them into structures with a `reference count` otherwise it is too easy to incur into memory leaks.
-* Advantage #1: you can pass SDS strings to functions designed for C functions without accessing a struct member or calling a function, like this:
+**Disadvantage #2**: if an SDS string is shared in different places in your program you have to modify all the references when you modify the string. However most of the times when you need to share SDS strings it is much better to encapsulate them into structures with a `reference count` otherwise it is too easy to incur into memory leaks.
+
+**Advantage #1**: you can pass SDS strings to functions designed for C functions without accessing a struct member or calling a function, like this:
 
     printf("%s\n", sds_string);
 
@@ -78,13 +79,13 @@ Or:
 
     printf("%s\n", getStringPointer(string));
 
-* Advantage #2: accessing individual chars is straightforward. C is a low level language so this is an important operation in many programs. With SDS strings accessing individual chars is very natural:
+**Advantage #2**: accessing individual chars is straightforward. C is a low level language so this is an important operation in many programs. With SDS strings accessing individual chars is very natural:
 
     printf("%c %c\n", s[0], s[1]);
 
 With other libraries your best chance is to assign `string->buf` (or call the function to get the string pointer) to a `char` pointer and work with this. However since the other libraries may reallocate the buffer implicitly every time you call a function that may modify the string you have to get a reference to the buffer again.
 
-* Advantage #3: single allocation has better cache locality. Usually when you access a string created by a string library using a structure, you have two different allocations for the structure representing the string, and the actual buffer holding the string. Over the time the buffer is reallocated, and it is likely that it ends in a totally different part of memory compared to the structure itself. Since modern programs performances are often dominated by cache misses, SDS may perform better in many workloads.
+**Advantage #3**: single allocation has better cache locality. Usually when you access a string created by a string library using a structure, you have two different allocations for the structure representing the string, and the actual buffer holding the string. Over the time the buffer is reallocated, and it is likely that it ends in a totally different part of memory compared to the structure itself. Since modern programs performances are often dominated by cache misses, SDS may perform better in many workloads.
 
 SDS basics
 ===
