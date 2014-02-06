@@ -254,28 +254,28 @@ Formatting strings
 There is a special string concatenation function that accepts a `printf` alike
 format specifier and cats the formatted string to the specified string.
 
-        sds sdscatprintf(sds s, const char *fmt, ...) {
+    sds sdscatprintf(sds s, const char *fmt, ...) {
 
 Example:
 
-        sds s;
-        int a = 10, b = 20;
-        s = sdsempty("The sum is: ");
-        s = sdscatprintf(s,"%d+%d = %d",a,b,a+b);
+    sds s;
+    int a = 10, b = 20;
+    s = sdsempty("The sum is: ");
+    s = sdscatprintf(s,"%d+%d = %d",a,b,a+b);
 
 Often you need to create SDS string directly from printf format specifiers.
 Because `sdscatprintf` is actually a function that concatenates strings all
 you need is to concatenate your string to an empty string:
 
-        char *name = "Anna";
-        int age = 2500;
-        sds s;
-        s = sdscatprintf(sdsempty(), "%s wrote %d lines of LISP\n", name, age);
+    char *name = "Anna";
+    int age = 2500;
+    sds s;
+    s = sdscatprintf(sdsempty(), "%s wrote %d lines of LISP\n", name, age);
 
 You can use `sdscatprintf` in order to convert numbers into SDS strings:
 
-        int some_integer = 100;
-        sds num = sdscatprintf(sdsempty(),"%s\n", some_integer);
+    int some_integer = 100;
+    sds num = sdscatprintf(sdsempty(),"%s\n", some_integer);
 
 However this is slow and we have a special function to make it efficient.
 
@@ -286,14 +286,14 @@ Creating an SDS string from an integer may be a common operation in certain
 kind of programs, and while you may do this with `sdscatprintf` the performance
 hit is big, so SDS provides a specialized function.
 
-        sds sdsfromlonglong(long long value);
+    sds sdsfromlonglong(long long value);
 
 Use it like this:
 
-        sds s = sdsfromlonglong(10000);
-        printf("%d\n", (int) sdslen(s));
+    sds s = sdsfromlonglong(10000);
+    printf("%d\n", (int) sdslen(s));
 
-        output> 5
+    output> 5
 
 Trimming strings and getting ranges
 ---
@@ -303,8 +303,8 @@ removed from the left and the right of the string. Another useful operation
 regarding strings is the ability to just take a range out of a larger
 string.
 
-        void sdstrim(sds s, const char *cset);
-        void sdsrange(sds s, int start, int end);
+    void sdstrim(sds s, const char *cset);
+    void sdsrange(sds s, int start, int end);
 
 SDS provides both the operations with the `sdstrim` and `sdsrange` functions.
 However note that both functions work differently than most functions modifying
@@ -318,11 +318,11 @@ Because of this behavior, both functions are fast and don't involve reallocation
 This is an example of string trimming where newlines and spaces are removed
 from an SDS strings:
 
-        sds s = sdsnew("         my string\n\n  ");
-        sdstrim(s," \n");
-        printf("-%s-\n",s);
+    sds s = sdsnew("         my string\n\n  ");
+    sdstrim(s," \n");
+    printf("-%s-\n",s);
 
-        output> -my string-
+    output> -my string-
 
 Basically `sdstrim` takes the SDS string to trim as first argument, and a
 null terminated set of characters to remove from left and right of the string.
@@ -334,23 +334,23 @@ Taking ranges is similar, but instead to take a set of characters, it takes
 to indexes, representing the start and the end as specified by zero-based
 indexes inside the string, to obtain the range that will be retained.
 
-        sds s = sdsnew("Hello World!");
-        sdsrange(s,1,4);
-        printf("-%s-\n");
+    sds s = sdsnew("Hello World!");
+    sdsrange(s,1,4);
+    printf("-%s-\n");
 
-        output> -ello-
+    output> -ello-
 
 Indexes can be negative to specify a position starting from the end of the
 string, so that -1 means the last character, -2 the penultimate, and so forth:
 
-        sds s = sdsnew("Hello World!");
-        sdsrange(s,6,-1);
-        printf("-%s-\n");
-        sdsrange(s,0,-2);
-        printf("-%s-\n");
+    sds s = sdsnew("Hello World!");
+    sdsrange(s,6,-1);
+    printf("-%s-\n");
+    sdsrange(s,0,-2);
+    printf("-%s-\n");
 
-        output> -World!-
-        output> -World-
+    output> -World!-
+    output> -World-
 
 `sdsrange` is very useful when implementing networking servers processing
 a protocol or sending messages. For example the following code is used
@@ -419,6 +419,12 @@ The reason is efficiency: `sdsnewlen` will always allocate a new string
 while `sdscpylen` will try to reuse the existing string if there is enough
 room to old the new content specified by the user, and will allocate a new
 one only if needed.
+
+Quoting strings
+---
+
+Tokenization
+---
 
 Error handling
 ---
