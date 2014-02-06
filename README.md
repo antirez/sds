@@ -551,6 +551,30 @@ Basically different tokens need to be separated by one or more spaces, and
 every single token can also be a quoted string in the same format that
 `sdscatrepr` is able to emit.
 
+String joining
+---
+
+There are two functions doing the reverse of tokenization by joining strings
+into a single one.
+
+    sds sdsjoin(char **argv, int argc, char *sep, size_t seplen);
+    sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen);
+
+The two functions take as input an array of strings of length `argc` and
+a separator and its length, and produce as output an SDS string consisting
+of all the specified strings separated by the specified separator.
+
+The difference between `sdsjoin` and `sdsjoinsds` is that the former accept
+C null terminated strings as input while the latter requires all the strings
+in the array to be SDS strings. However because of this only `sdsjoinsds` is
+able to deal with binary data.
+
+    char *tokens[3] = {"foo","bar","zap"};
+    sds s = sdsjoin(tokens,3,"|",1);
+    printf("%s\n", s);
+
+    output> foo|bar|zap
+
 Error handling
 ---
 
@@ -562,16 +586,162 @@ so you may want to do this as well by wrapping `malloc` and other related
 memory allocation calls directly.
 
 SDS internals and advanced usage
+===
+
+At the very beginning of this documentation it was explained how SDS strings
+are allocated, however the prefix stored before the pointer returned to the
+user was classified as an *header* without further details. For an advanced
+usage it is better to dig more into the internals of SDS and show the
+structure implementing it:
+
+    struct sdshdr {
+        int len;
+        int free;
+        char buf[];
+    };
+
+As you can see, the structure may resemble the one of a conventional string
+library, however the `buf` field of the structure is different since it is
+not a pointer but an array without any length declared, so `buf` actually
+points at the first byte just after the `free` integer. So in order to create
+an SDS string we just allocate a piece of memory that is as large as the
+`sdshdr` structure plus the length of our string, plus an additional byte
+for the mandatory null term that every SDS string has.
+
+The `len` field of the structure is quite obvious, and is the current length
+of the SDS string, always computed every time the string is modified via
+SDS function calls. The `free` field instead represents the amount of free
+memory in the current allocation that can be used to store more characters.
+
+So the actual SDS layout is this one:
+
+    +------------+------------------------+-----------+---------------\
+    | Len | Free | H E L L O W O R L D \n | Null term |  Free space   \
+    +------------+------------------------+-----------+---------------\
+                 |
+                 `-> Pointer returned to the user.
+
+You may wonder why there is some free space at the end of the string, it
+looks like a waste. Actually after a new SDS string is created, there is no
+free space at the end at all: the allocation will be as small as possible to
+just hold the header, string, and null term. However other access patterns
+will create extra free space at the end, like in the following program:
+
+    s = sdsempty();
+    s = sdscat(s,"foo");
+    s = sdscat(s,"bar");
+    s = sdscat(s,"123");
+
+Since SDS tries to be efficient it can't afford to reallocate the string every
+time new data is appended, since this would be very inefficient, so it uses
+the **preallocation of some free space** every time you enlarge the string.
+
+The preallocation algorithm used is the following: every time the string
+is reallocated in order to hold more bytes, the actual allocation size peformed
+is two times the minimum required. So for instance if the string currently
+is holding 30 bytes, and we concatenate 2 more bytes, instead of allocating 32
+bytes in total SDS will allocate 64 bytes.
+
+However there is an hard limit to the allocation it can perform ahead, and is
+defined by `SDS_MAX_PREALLOC`. SDS will never allocate more than 1MB of
+additional space (by default, you can change this default).
+
+Shrinking strings
 ---
+
+    sds sdsRemoveFreeSpace(sds s);
+    size_t sdsAllocSize(sds s);
+
+Sometimes there are class of programs that require to use very little memory.
+After strings concatenations, trimming, ranges, the string may end having
+a non trivial amount of additional space at the end.
+
+It is possible to resize a string back to its minimal size in order to hold
+the current content by using the function `sdsRemoveFreeSpace`.
+
+    s = sdsRemoveFreeSpace(s);
+
+There is also a function that can be used in order to get the size of the
+total allocation for a given string, and is called `sdsAllocSize`.
+
+    sds s = sdsnew("Ladies and gentlemen");
+    s = sdscat(s,"... welcome to the C language.");
+    printf("%d\n", (int) sdsAllocSize(s));
+    s = sdsRemoveFreeSpace(s);
+    printf("%d\n", (int) sdsAllocSize(s));
+
+    output> 109
+    output> 59
+
+NOTE: SDS Low level API use cammelCase in order to warn you that you are playing with the fire.
+
+Manual modifications of SDS strings
+---
+
+    void sdsupdatelen(sds s);
+
+Sometimes you may want to hack with an SDS string manually, without using
+SDS functions. In the following example we implicity change the length
+of the string, however we want the logical length to reflect the null terminated
+C string.
+
+The function `sdsupdatelen` does just that, updating the internal length
+information for the specified string to the length obtained via `strlen`.
+
+    sds s = sdsnew("foobar");
+    s[2] = '\0';
+    printf("%d\n", sdslen(s));
+    sdsupdatelen(s);
+    printf("%d\n", sdslen(s));
+
+    output> 6
+    output> 2
 
 Sharing SDS strings
 ---
 
+If you are writing a program in which it is advantageous to share the same
+SDS string across different data structures, it is absolutely advised to
+encapsulate SDS strings into structures that remember the number of references
+of the string, with functions to increment and decrement the number of refences.
+
+This approach is a memory management technique called *reference counting* and
+in the context of SDS has two advantages:
+
+* It is less likely that you'll create memory leaks or bugs due to non freeing SDS strings or freeing already freed strings.
+* You'll not need to update every reference to an SDS string when you modifiy it (since the new SDS string may point to a different memory location).
+
+While this is definitely a very commmon programming technique I'll outline
+the basic ideas here. You create a structure like that:
+
+    struct mySharedStrings {
+        int refcount;
+        sds string;
+    }
+
+When new strings are created, the structure is allocated and returned with
+refcount set to 1. The you have two functions to change the reference count
+of the shared string:
+
+* `incrementStringRefCount` will simply increment `refcount` of 1 in the structure. It will be called every time you add a reference to the string on some new data structure, variable, or whathever.
+* `decrementStringRefCount` is used when you remove a reference. This function is however special since when the `refcount` drops to zero, it automatically frees the SDS string, and the `mySharedString` structure as well.
+
 Interactions with heap checkers
 ---
 
+Because SDS returns pointers into the middle of memory chunks allocated with
+`malloc`, heap checkers may have issues, however:
+
+* The popular Valgrind program will detect SDS strings are *possibly lost* memory and never as *definitely lost*, so it is easy to tell if there is a leak or not. I used Valgrind with Redis for years and every real leak was consistently detected as "definitely lost".
+* OSX instrumentation tools don't detect SDS strings as leaks but are able to correctly handle pointers pointing to the middle of memory chunks.
+
 Zero copy append from syscalls
 ----
+
+At this point you should have all the tools to dig more inside the SDS
+library by reading the source code, however there is an interesting pattern
+you can mount using the low level API exported, that is used inside Redis
+in order to improve performances of the networking code.
 
 Using sdsIncrLen() and sdsMakeRoomFor() it is possible to mount the
 following schema, to cat bytes coming from the kernel to the end of an
@@ -583,8 +753,14 @@ sds string without copying into an intermediate buffer:
     ... check for nread <= 0 and handle it ...
     sdsIncrLen(s, nread);
 
+`sdsIncrLen` is documented inside the source code of `sds.c`.
+
 Embedding SDS into your project
 ===
+
+This is as simple as copying the `sds.c` and `sds.h` files inside your
+project. The source code is small and every C99 compiler should deal with
+it without issues.
 
 Credits and license
 ===
