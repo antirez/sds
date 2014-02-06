@@ -39,7 +39,7 @@ Advantages and disadvantages of SDS
 ===
 
 Normally dynamic string libraries for C are implemented using a structure
-that defines the string. The structure has a pointer filed that is managed
+that defines the string. The structure has a pointer field that is managed
 by the string function, so it looks like this:
 
     struct yourAverageStringLibrary {
