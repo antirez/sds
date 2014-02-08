@@ -346,8 +346,8 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
  *
  * Example:
  *
- * s = sdsnew("AA...AA.a.aa.aHelloWorld     :::");
- * s = sdstrim(s,"A. :");
+ * s = sdsnew("AA...AA.a.aa.aHello World     :::");
+ * sdstrim(s,"aA. :");
  * printf("%s\n", s);
  *
  * Output will be just "Hello World".
