@@ -416,7 +416,8 @@ void sdsrange(sds s, int start, int end) {
 
 /* Apply tolower() to every character of the sds string 's'. */
 void sdstolower(sds s) {
-    while(*s){
+    char * end = s + sdslen(s);
+    while(s!=end){
         if((*s > 64) && (*s < 91)) *s = *s+32;
         s++;
     }
@@ -424,7 +425,8 @@ void sdstolower(sds s) {
 
 /* Apply toupper() to every character of the sds string 's'. */
 void sdstoupper(sds s) {
-    while(*s){
+    char * end = s + sdslen(s);
+    while(s!=end){
         if((*s > 96) && (*s < 123)) *s = *s-32;
         s++;
     }
