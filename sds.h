@@ -81,21 +81,25 @@ void sdsrange(sds s, int start, int end);
 void sdsupdatelen(sds s);
 void sdsclear(sds s);
 int sdscmp(const sds s1, const sds s2);
-sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count);
+sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count)
+    __attribute__((warn_unused_result));
 void sdsfreesplitres(sds *tokens, int count);
 void sdstolower(sds s);
 void sdstoupper(sds s);
 sds sdsfromlonglong(long long value);
 sds sdscatrepr(sds s, const char *p, size_t len);
-sds *sdssplitargs(const char *line, int *argc);
+sds *sdssplitargs(const char *line, int *argc)
+    __attribute__((warn_unused_result));
 sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen);
 sds sdsjoin(char **argv, int argc, char *sep, size_t seplen);
 sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen);
 
 /* Low level functions exposed to the user API */
-sds sdsMakeRoomFor(sds s, size_t addlen);
+sds sdsMakeRoomFor(sds s, size_t addlen)
+    __attribute__((warn_unused_result));
 void sdsIncrLen(sds s, int incr);
-sds sdsRemoveFreeSpace(sds s);
+sds sdsRemoveFreeSpace(sds s)
+    __attribute__((warn_unused_result));
 size_t sdsAllocSize(sds s);
 
 #endif
