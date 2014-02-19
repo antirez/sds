@@ -34,6 +34,7 @@
 #include <ctype.h>
 #include <assert.h>
 
+#include "mem-testing.h"
 #include "sds.h"
 
 /* Create a new sds string with the content specified by the 'init' pointer
@@ -887,6 +888,7 @@ int main(void) {
             int oldfree;
 
             sdsfree(x);
+            sdsfree(y);
             x = sdsnew("0");
             sh = (void*) (x-(sizeof(struct sdshdr)));
             test_cond("sdsnew() free/len buffers", sh->len == 1 && sh->free == 0);
@@ -899,7 +901,11 @@ int main(void) {
             test_cond("sdsIncrLen() -- content", x[0] == '0' && x[1] == '1');
             test_cond("sdsIncrLen() -- len", sh->len == 2);
             test_cond("sdsIncrLen() -- free", sh->free == oldfree-1);
+            sdsfree(x);
         }
+
+        /* check the memory allocated */
+        test_cond("check memory allocted size", mem_test_get_allocated() == 0);
     }
     test_report()
     return 0;
