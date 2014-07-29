@@ -39,7 +39,6 @@
 #ifndef __TESTHELP_H
 #define __TESTHELP_H
 
-xxxxxxxxxxxxxxxxxxxxx
 
 int __failed_tests = 0;
 int __test_num = 0;
