@@ -49,12 +49,12 @@
  * end of the string. However the string is binary safe and can contain
  * \0 characters in the middle, as the length is stored in the sds header. */
 sds sdsnewlen(const void *init, size_t initlen) {
-    struct sdshdr *sh;
+    sdshdr *sh;
 
     if (init) {
-        sh = (struct sdshdr*) malloc(sizeof *sh+initlen+1);
+        sh = (sdshdr*) malloc(sizeof *sh+initlen+1);
     } else {
-        sh = (struct sdshdr*) calloc(sizeof *sh+initlen+1,1);
+        sh = (sdshdr*) calloc(sizeof *sh+initlen+1,1);
     }
     if (sh == NULL) return NULL;
     sh->len = initlen;
@@ -85,7 +85,7 @@ sds sdsdup(const sds s) {
 /* Free an sds string. No operation is performed if 's' is NULL. */
 void sdsfree(sds s) {
     if (s == NULL) return;
-    free(s-sizeof(struct sdshdr));
+    free(s-sizeof(sdshdr));
 }
 
 /* Set the sds string length to the length as obtained with strlen(), so
@@ -103,7 +103,7 @@ void sdsfree(sds s) {
  * the output will be "6" as the string was modified but the logical length
  * remains 6 bytes. */
 void sdsupdatelen(sds s) {
-    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
+    sdshdr *sh = (sdshdr*) (s-sizeof *sh);;
     int reallen = strlen(s);
     sh->free += (sh->len-reallen);
     sh->len = reallen;
@@ -114,7 +114,7 @@ void sdsupdatelen(sds s) {
  * so that next append operations will not require allocations up to the
  * number of bytes previously available. */
 void sdsclear(sds s) {
-    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
+    sdshdr *sh = (sdshdr*) (s-sizeof *sh);;
     sh->free += sh->len;
     sh->len = 0;
     sh->buf[0] = '\0';
@@ -127,19 +127,19 @@ void sdsclear(sds s) {
  * Note: this does not change the *length* of the sds string as returned
  * by sdslen(), but only the free buffer space we have. */
 sds sdsMakeRoomFor(sds s, size_t addlen) {
-    struct sdshdr *sh, *newsh;
+    sdshdr *sh, *newsh;
     size_t free = sdsavail(s);
     size_t len, newlen;
 
     if (free >= addlen) return s;
     len = sdslen(s);
-    sh = (struct sdshdr*) (s-sizeof *sh);;
+    sh = (sdshdr*) (s-sizeof *sh);;
     newlen = (len+addlen);
     if (newlen < SDS_MAX_PREALLOC)
         newlen *= 2;
     else
         newlen += SDS_MAX_PREALLOC;
-    newsh = (struct sdshdr*) realloc(sh, sizeof *newsh+newlen+1);
+    newsh = (sdshdr*) realloc(sh, sizeof *newsh+newlen+1);
     if (newsh == NULL) return NULL;
 
     newsh->free = newlen - len;
@@ -153,10 +153,10 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
 sds sdsRemoveFreeSpace(sds s) {
-    struct sdshdr *sh;
+    sdshdr *sh;
 
-    sh = (struct sdshdr*) (s-sizeof *sh);;
-    sh = (struct sdshdr*) realloc(sh, sizeof *sh+sh->len+1);
+    sh = (sdshdr*) (s-sizeof *sh);;
+    sh = (sdshdr*) realloc(sh, sizeof *sh+sh->len+1);
     sh->free = 0;
     return sh->buf;
 }
@@ -169,7 +169,7 @@ sds sdsRemoveFreeSpace(sds s) {
  * 4) The implicit null term.
  */
 size_t sdsAllocSize(sds s) {
-    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
+    sdshdr *sh = (sdshdr*) (s-sizeof *sh);;
 
     return sizeof(*sh)+sh->len+sh->free+1;
 }
@@ -198,7 +198,7 @@ size_t sdsAllocSize(sds s) {
  * sdsIncrLen(s, nread);
  */
 void sdsIncrLen(sds s, int incr) {
-    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
+    sdshdr *sh = (sdshdr*) (s-sizeof *sh);;
 
     assert(sh->free >= incr);
     sh->len += incr;
@@ -213,7 +213,7 @@ void sdsIncrLen(sds s, int incr) {
  * if the specified length is smaller than the current length, no operation
  * is performed. */
 sds sdsgrowzero(sds s, size_t len) {
-    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);
+    sdshdr *sh = (sdshdr*) (s-sizeof *sh);
     size_t totlen, curlen = sh->len;
 
     if (len <= curlen) return s;
@@ -221,7 +221,7 @@ sds sdsgrowzero(sds s, size_t len) {
     if (s == NULL) return NULL;
 
     /* Make sure added region doesn't contain garbage */
-    sh = (struct sdshdr*) (s-sizeof *sh);
+    sh = (sdshdr*) (s-sizeof *sh);
     memset(s+curlen,0,(len-curlen+1)); /* also set trailing \0 byte */
     totlen = sh->len+sh->free;
     sh->len = len;
@@ -235,12 +235,12 @@ sds sdsgrowzero(sds s, size_t len) {
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
 sds sdscatlen(sds s, const void *t, size_t len) {
-    struct sdshdr *sh;
+    sdshdr *sh;
     size_t curlen = sdslen(s);
 
     s = sdsMakeRoomFor(s,len);
     if (s == NULL) return NULL;
-    sh = (struct sdshdr*) (s-sizeof *sh);;
+    sh = (sdshdr*) (s-sizeof *sh);;
     memcpy(s+curlen, t, len);
     sh->len = curlen+len;
     sh->free = sh->free-len;
@@ -267,13 +267,13 @@ sds sdscatsds(sds s, const sds t) {
 /* Destructively modify the sds string 's' to hold the specified binary
  * safe string pointed by 't' of length 'len' bytes. */
 sds sdscpylen(sds s, const char *t, size_t len) {
-    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
+    sdshdr *sh = (sdshdr*) (s-sizeof *sh);;
     size_t totlen = sh->free+sh->len;
 
     if (totlen < len) {
         s = sdsMakeRoomFor(s,len-sh->len);
         if (s == NULL) return NULL;
-        sh = (struct sdshdr*) (s-sizeof *sh);;
+        sh = (sdshdr*) (s-sizeof *sh);;
         totlen = sh->free+sh->len;
     }
     memcpy(s, t, len);
@@ -353,7 +353,7 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
  * Output will be just "Hello World".
  */
 void sdstrim(sds s, const char *cset) {
-    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
+    sdshdr *sh = (sdshdr*) (s-sizeof *sh);;
     char *start, *end, *sp, *ep;
     size_t len;
 
@@ -385,7 +385,7 @@ void sdstrim(sds s, const char *cset) {
  * sdsrange(s,1,-1); => "ello World"
  */
 void sdsrange(sds s, int start, int end) {
-    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
+    sdshdr *sh = (sdshdr*) (s-sizeof *sh);;
     size_t newlen, len = sdslen(s);
 
     if (len == 0) return;
@@ -788,7 +788,7 @@ sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen) {
 
 int main(void) {
     {
-        struct sdshdr *sh;
+        sdshdr *sh;
         sds x = sdsnew("foo"), y;
 
         test_cond("Create a string and obtain the length",
@@ -888,10 +888,10 @@ int main(void) {
 
             sdsfree(x);
             x = sdsnew("0");
-            sh = (struct sdshdr*) (x-(sizeof(struct sdshdr)));
+            sh = (sdshdr*) (x-(sizeof(sdshdr)));
             test_cond("sdsnew() free/len buffers", sh->len == 1 && sh->free == 0);
             x = sdsMakeRoomFor(x,1);
-            sh = (struct sdshdr*) (x-(sizeof(struct sdshdr)));
+            sh = (sdshdr*) (x-(sizeof(sdshdr)));
             test_cond("sdsMakeRoomFor()", sh->len == 1 && sh->free > 0);
             oldfree = sh->free;
             x[1] = '1';

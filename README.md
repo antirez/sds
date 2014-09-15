@@ -686,11 +686,11 @@ usage it is better to dig more into the internals of SDS and show the
 structure implementing it:
 
 ```c
-struct sdshdr {
+typedef struct sdshdr_ {
     int len;
     int free;
     char buf[];
-};
+} sdshdr;
 ```
 
 As you can see, the structure may resemble the one of a conventional string

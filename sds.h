@@ -38,19 +38,19 @@
 
 typedef char *sds;
 
-struct sdshdr {
+typedef struct sdshdr_ {
     int len;
     int free;
     char buf[];
-};
+} sdshdr;
 
 static inline size_t sdslen(const sds s) {
-    struct sdshdr *sh = (struct sdshdr*)(s-sizeof *sh);
+    sdshdr *sh = (sdshdr*)(s-sizeof *sh);
     return sh->len;
 }
 
 static inline size_t sdsavail(const sds s) {
-    struct sdshdr *sh = (struct sdshdr*)(s-sizeof *sh);
+    sdshdr *sh = (sdshdr*)(s-sizeof *sh);
     return sh->free;
 }
 
