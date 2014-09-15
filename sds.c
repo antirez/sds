@@ -52,9 +52,9 @@ sds sdsnewlen(const void *init, size_t initlen) {
     struct sdshdr *sh;
 
     if (init) {
-        sh = malloc(sizeof *sh+initlen+1);
+        sh = (struct sdshdr*) malloc(sizeof *sh+initlen+1);
     } else {
-        sh = calloc(sizeof *sh+initlen+1,1);
+        sh = (struct sdshdr*) calloc(sizeof *sh+initlen+1,1);
     }
     if (sh == NULL) return NULL;
     sh->len = initlen;
@@ -103,7 +103,7 @@ void sdsfree(sds s) {
  * the output will be "6" as the string was modified but the logical length
  * remains 6 bytes. */
 void sdsupdatelen(sds s) {
-    struct sdshdr *sh = (void*) (s-sizeof *sh);;
+    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
     int reallen = strlen(s);
     sh->free += (sh->len-reallen);
     sh->len = reallen;
@@ -114,7 +114,7 @@ void sdsupdatelen(sds s) {
  * so that next append operations will not require allocations up to the
  * number of bytes previously available. */
 void sdsclear(sds s) {
-    struct sdshdr *sh = (void*) (s-sizeof *sh);;
+    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
     sh->free += sh->len;
     sh->len = 0;
     sh->buf[0] = '\0';
@@ -133,13 +133,13 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
 
     if (free >= addlen) return s;
     len = sdslen(s);
-    sh = (void*) (s-sizeof *sh);;
+    sh = (struct sdshdr*) (s-sizeof *sh);;
     newlen = (len+addlen);
     if (newlen < SDS_MAX_PREALLOC)
         newlen *= 2;
     else
         newlen += SDS_MAX_PREALLOC;
-    newsh = realloc(sh, sizeof *newsh+newlen+1);
+    newsh = (struct sdshdr*) realloc(sh, sizeof *newsh+newlen+1);
     if (newsh == NULL) return NULL;
 
     newsh->free = newlen - len;
@@ -155,8 +155,8 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
 sds sdsRemoveFreeSpace(sds s) {
     struct sdshdr *sh;
 
-    sh = (void*) (s-sizeof *sh);;
-    sh = realloc(sh, sizeof *sh+sh->len+1);
+    sh = (struct sdshdr*) (s-sizeof *sh);;
+    sh = (struct sdshdr*) realloc(sh, sizeof *sh+sh->len+1);
     sh->free = 0;
     return sh->buf;
 }
@@ -169,7 +169,7 @@ sds sdsRemoveFreeSpace(sds s) {
  * 4) The implicit null term.
  */
 size_t sdsAllocSize(sds s) {
-    struct sdshdr *sh = (void*) (s-sizeof *sh);;
+    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
 
     return sizeof(*sh)+sh->len+sh->free+1;
 }
@@ -198,7 +198,7 @@ size_t sdsAllocSize(sds s) {
  * sdsIncrLen(s, nread);
  */
 void sdsIncrLen(sds s, int incr) {
-    struct sdshdr *sh = (void*) (s-sizeof *sh);;
+    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
 
     assert(sh->free >= incr);
     sh->len += incr;
@@ -213,7 +213,7 @@ void sdsIncrLen(sds s, int incr) {
  * if the specified length is smaller than the current length, no operation
  * is performed. */
 sds sdsgrowzero(sds s, size_t len) {
-    struct sdshdr *sh = (void*) (s-sizeof *sh);
+    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);
     size_t totlen, curlen = sh->len;
 
     if (len <= curlen) return s;
@@ -221,7 +221,7 @@ sds sdsgrowzero(sds s, size_t len) {
     if (s == NULL) return NULL;
 
     /* Make sure added region doesn't contain garbage */
-    sh = (void*)(s-sizeof *sh);
+    sh = (struct sdshdr*) (s-sizeof *sh);
     memset(s+curlen,0,(len-curlen+1)); /* also set trailing \0 byte */
     totlen = sh->len+sh->free;
     sh->len = len;
@@ -240,7 +240,7 @@ sds sdscatlen(sds s, const void *t, size_t len) {
 
     s = sdsMakeRoomFor(s,len);
     if (s == NULL) return NULL;
-    sh = (void*) (s-sizeof *sh);;
+    sh = (struct sdshdr*) (s-sizeof *sh);;
     memcpy(s+curlen, t, len);
     sh->len = curlen+len;
     sh->free = sh->free-len;
@@ -267,13 +267,13 @@ sds sdscatsds(sds s, const sds t) {
 /* Destructively modify the sds string 's' to hold the specified binary
  * safe string pointed by 't' of length 'len' bytes. */
 sds sdscpylen(sds s, const char *t, size_t len) {
-    struct sdshdr *sh = (void*) (s-sizeof *sh);;
+    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
     size_t totlen = sh->free+sh->len;
 
     if (totlen < len) {
         s = sdsMakeRoomFor(s,len-sh->len);
         if (s == NULL) return NULL;
-        sh = (void*) (s-sizeof *sh);;
+        sh = (struct sdshdr*) (s-sizeof *sh);;
         totlen = sh->free+sh->len;
     }
     memcpy(s, t, len);
@@ -296,7 +296,7 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     size_t buflen = 16;
 
     while(1) {
-        buf = malloc(buflen);
+        buf = (char*) malloc(buflen);
         if (buf == NULL) return NULL;
         buf[buflen-2] = '\0';
         va_copy(cpy,ap);
@@ -353,7 +353,7 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
  * Output will be just "Hello World".
  */
 void sdstrim(sds s, const char *cset) {
-    struct sdshdr *sh = (void*) (s-sizeof *sh);;
+    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
     char *start, *end, *sp, *ep;
     size_t len;
 
@@ -385,7 +385,7 @@ void sdstrim(sds s, const char *cset) {
  * sdsrange(s,1,-1); => "ello World"
  */
 void sdsrange(sds s, int start, int end) {
-    struct sdshdr *sh = (void*) (s-sizeof *sh);;
+    struct sdshdr *sh = (struct sdshdr*) (s-sizeof *sh);;
     size_t newlen, len = sdslen(s);
 
     if (len == 0) return;
@@ -473,7 +473,7 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
 
     if (seplen < 1 || len < 0) return NULL;
 
-    tokens = malloc(sizeof(sds)*slots);
+    tokens = (sds*) malloc(sizeof(sds)*slots);
     if (tokens == NULL) return NULL;
 
     if (len == 0) {
@@ -486,7 +486,7 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
             sds *newtokens;
 
             slots *= 2;
-            newtokens = realloc(tokens,sizeof(sds)*slots);
+            newtokens = (sds*) realloc(tokens,sizeof(sds)*slots);
             if (newtokens == NULL) goto cleanup;
             tokens = newtokens;
         }
@@ -714,13 +714,13 @@ sds *sdssplitargs(const char *line, int *argc) {
                 if (*p) p++;
             }
             /* add the token to the vector */
-            vector = realloc(vector,((*argc)+1)*sizeof(char*));
+            vector = (char**) realloc(vector,((*argc)+1)*sizeof(char*));
             vector[*argc] = current;
             (*argc)++;
             current = NULL;
         } else {
             /* Even on empty input string return something not NULL. */
-            if (vector == NULL) vector = malloc(sizeof(void*));
+            if (vector == NULL) vector = (char**) malloc(sizeof(void*));
             return vector;
         }
     }
@@ -888,10 +888,10 @@ int main(void) {
 
             sdsfree(x);
             x = sdsnew("0");
-            sh = (void*) (x-(sizeof(struct sdshdr)));
+            sh = (struct sdshdr*) (x-(sizeof(struct sdshdr)));
             test_cond("sdsnew() free/len buffers", sh->len == 1 && sh->free == 0);
             x = sdsMakeRoomFor(x,1);
-            sh = (void*) (x-(sizeof(struct sdshdr)));
+            sh = (struct sdshdr*) (x-(sizeof(struct sdshdr)));
             test_cond("sdsMakeRoomFor()", sh->len == 1 && sh->free > 0);
             oldfree = sh->free;
             x[1] = '1';
