@@ -153,12 +153,14 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
 sds sdsRemoveFreeSpace(sds s) {
-    sdshdr *sh;
+    sdshdr *sh, *newsh;
 
     sh = (sdshdr*) (s-sizeof *sh);;
-    sh = (sdshdr*) realloc(sh, sizeof *sh+sh->len+1);
-    sh->free = 0;
-    return sh->buf;
+    newsh = (sdshdr*) realloc(sh, sizeof *sh+sh->len+1);
+    if (newsh == NULL) return NULL;
+
+    newsh->free = 0;
+    return newsh->buf;
 }
 
 /* Return the total size of the allocation of the specifed sds string,
