@@ -36,6 +36,10 @@
 #include <sys/types.h>
 #include <stdarg.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef char *sds;
 
 struct sdshdr {
@@ -97,5 +101,9 @@ sds sdsMakeRoomFor(sds s, size_t addlen);
 void sdsIncrLen(sds s, int incr);
 sds sdsRemoveFreeSpace(sds s);
 size_t sdsAllocSize(sds s);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif
