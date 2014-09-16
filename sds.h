@@ -33,6 +33,7 @@
 
 #define SDS_MAX_PREALLOC (1024*1024)
 
+#include <stddef.h>
 #include <sys/types.h>
 #include <stdarg.h>
 
@@ -44,13 +45,18 @@ typedef struct sdshdr_ {
     char buf[];
 } sdshdr;
 
+static inline sdshdr *sds_start(const sds s)
+{
+    return (sdshdr*) (s-(int)offsetof(sdshdr, buf));
+}
+
 static inline size_t sdslen(const sds s) {
-    sdshdr *sh = (sdshdr*)(s-sizeof *sh);
+    sdshdr *sh = sds_start(s);
     return sh->len;
 }
 
 static inline size_t sdsavail(const sds s) {
-    sdshdr *sh = (sdshdr*)(s-sizeof *sh);
+    sdshdr *sh = sds_start(s);
     return sh->free;
 }
 
