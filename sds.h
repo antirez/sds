@@ -41,6 +41,10 @@
 #include <sys/types.h>
 #include <stdarg.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef char *sds;
 
 typedef struct sdshdr_ {
@@ -107,5 +111,9 @@ void sdsIncrLen(sds s, int incr);
 sds sdsRemoveFreeSpace(sds s)
     __attribute__((warn_unused_result));
 size_t sdsAllocSize(sds s);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif
