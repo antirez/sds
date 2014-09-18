@@ -36,6 +36,17 @@
 
 #include "sds.h"
 
+typedef struct sdshdr_ {
+    int len;
+    int free;
+    char buf[];
+} sdshdr;
+
+static inline sdshdr *sds_start(const sds s)
+{
+    return (sdshdr*) (s-(int)offsetof(sdshdr, buf));
+}
+
 /* Create a new sds string with the content specified by the 'init' pointer
  * and 'initlen'.
  * If NULL is used for 'init' the string is initialized with zero bytes.

@@ -48,24 +48,27 @@ extern "C" {
 
 typedef char *sds;
 
-typedef struct sdshdr_ {
+/* This is a dummy structure to compute `len' and `free' offsets, not to be
+ * used by applications.  The original structure, `sdshdr' (defined in
+ * `sds.c') uses a flexible array member for `buf', making it invalid for
+ * C++.  Assuming that both C and C++ code gets compiled by the same compiler
+ * suite, the replacement below should give the same offsets so that `sdslen'
+ * and `sdavail' can stay as inline definitions. */
+struct sdshdr_h_ {
     int len;
     int free;
-    char buf[];
-} sdshdr;
-
-static inline sdshdr *sds_start(const sds s)
-{
-    return (sdshdr*) (s-(int)offsetof(sdshdr, buf));
-}
+    char buf[1000];
+};
 
 static inline size_t sdslen(const sds s) {
-    sdshdr *sh = sds_start(s);
+    struct sdshdr_h_ *sh = (struct sdshdr_h_*)
+                             (s-(int)offsetof(struct sdshdr_h_, buf));
     return sh->len;
 }
 
 static inline size_t sdsavail(const sds s) {
-    sdshdr *sh = sds_start(s);
+    struct sdshdr_h_ *sh = (struct sdshdr_h_*)
+                             (s-(int)offsetof(struct sdshdr_h_, buf));
     return sh->free;
 }
 
