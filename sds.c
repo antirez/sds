@@ -96,6 +96,7 @@ sds sdsdup(const sds s) {
 /* Free an sds string. No operation is performed if 's' is NULL. */
 void sdsfree(sds s) {
     if (s == NULL) return;
+
     free(sds_start(s));
 }
 
@@ -114,6 +115,8 @@ void sdsfree(sds s) {
  * the output will be "6" as the string was modified but the logical length
  * remains 6 bytes. */
 void sdsupdatelen(sds s) {
+    if (s == NULL) return;
+
     sdshdr *sh = sds_start(s);
     int reallen = strlen(s);
     sh->free += (sh->len-reallen);
@@ -125,6 +128,8 @@ void sdsupdatelen(sds s) {
  * so that next append operations will not require allocations up to the
  * number of bytes previously available. */
 void sdsclear(sds s) {
+    if (s == NULL) return;
+
     sdshdr *sh = sds_start(s);
     sh->free += sh->len;
     sh->len = 0;
@@ -138,6 +143,8 @@ void sdsclear(sds s) {
  * Note: this does not change the *length* of the sds string as returned
  * by sdslen(), but only the free buffer space we have. */
 sds sdsMakeRoomFor(sds s, size_t addlen) {
+    if (s == NULL) return NULL;
+
     sdshdr *sh, *newsh;
     size_t free = sdsavail(s);
     size_t len, newlen;
@@ -164,6 +171,8 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
 sds sdsRemoveFreeSpace(sds s) {
+    if (s == NULL) return NULL;
+
     sdshdr *sh, *newsh;
 
     sh = sds_start(s);
@@ -182,6 +191,8 @@ sds sdsRemoveFreeSpace(sds s) {
  * 4) The implicit null term.
  */
 size_t sdsAllocSize(sds s) {
+    if (s == NULL) return 0;
+
     sdshdr *sh = sds_start(s);
 
     return sizeof(*sh)+sh->len+sh->free+1;
@@ -211,6 +222,8 @@ size_t sdsAllocSize(sds s) {
  * sdsIncrLen(s, nread);
  */
 void sdsIncrLen(sds s, int incr) {
+    if (s == NULL) return;
+
     sdshdr *sh = sds_start(s);
 
     assert(sh->free >= incr);
@@ -226,6 +239,8 @@ void sdsIncrLen(sds s, int incr) {
  * if the specified length is smaller than the current length, no operation
  * is performed. */
 sds sdsgrowzero(sds s, size_t len) {
+    if (s == NULL) return NULL;
+
     sdshdr *sh = sds_start(s);
     size_t totlen, curlen = sh->len;
 
@@ -280,6 +295,8 @@ sds sdscatsds(sds s, const sds t) {
 /* Destructively modify the sds string 's' to hold the specified binary
  * safe string pointed by 't' of length 'len' bytes. */
 sds sdscpylen(sds s, const char *t, size_t len) {
+    if (s == NULL) return NULL;
+
     sdshdr *sh = sds_start(s);
     size_t totlen = sh->free+sh->len;
 
@@ -367,6 +384,8 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
  * Output will be just "Hello World".
  */
 void sdstrim(sds s, const char *cset) {
+    if (s == NULL) return;
+
     sdshdr *sh = sds_start(s);
     char *start, *end, *sp, *ep;
     size_t len;
