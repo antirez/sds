@@ -36,6 +36,12 @@
 
 #include "sds.h"
 
+struct sdshdr {
+    int len;
+    int free;
+    char buf[];
+};
+
 /* Create a new sds string with the content specified by the 'init' pointer
  * and 'initlen'.
  * If NULL is used for 'init' the string is initialized with zero bytes.
