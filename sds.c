@@ -153,11 +153,15 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
 sds sdsRemoveFreeSpace(sds s) {
-    struct sdshdr *sh;
+    struct sdshdr *sh, *shreallocswap;
 
     sh = (void*) (s-sizeof *sh);;
-    sh = realloc(sh, sizeof *sh+sh->len+1);
-    sh->free = 0;
+    shreallocswap = realloc(sh, sizeof *sh+sh->len+1);
+    if (shreallocswap != NULL)  {
+        sh = shreallocswap;
+        sh->free = 0;
+    }
+
     return sh->buf;
 }
 
@@ -628,6 +632,7 @@ sds *sdssplitargs(const char *line, int *argc) {
     const char *p = line;
     char *current = NULL;
     char **vector = NULL;
+    char **vectorreallocswap;
 
     *argc = 0;
     while(1) {
@@ -714,7 +719,10 @@ sds *sdssplitargs(const char *line, int *argc) {
                 if (*p) p++;
             }
             /* add the token to the vector */
-            vector = realloc(vector,((*argc)+1)*sizeof(char*));
+
+            vectorreallocswap = realloc(vector,((*argc)+1)*sizeof(char*));
+            if (vectorreallocswap == NULL) goto err;
+
             vector[*argc] = current;
             (*argc)++;
             current = NULL;
