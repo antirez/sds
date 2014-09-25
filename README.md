@@ -23,17 +23,17 @@ Because of meta data stored before the actual returned pointer as a prefix,
 and because of every SDS string implicitly adding a null term at the end of
 the string regardless of the actual content of the string, SDS strings work
 well together with C strings and the user is free to use them interchangeably
-with real-only functions that access the string in read-only.
+with read-only functions that access the string.
 
 SDS was a C string I developed in the past for my everyday C programming needs,
 later it was moved into Redis where it is used extensively and where it was
 modified in order to be suitable for high performance operations. Now it was
 extracted from Redis and forked as a stand alone project.
 
-Because of its many years life inside Redis, SDS provides both higher level
+Because of its many years of life inside Redis, SDS provides both higher level
 functions for easy strings manipulation in C, but also a set of low level
 functions that make it possible to write high performance code without paying
-a penalty for using an higher level string library.
+a penalty for using a higher level string library.
 
 Advantages and disadvantages of SDS
 ===
@@ -50,7 +50,7 @@ struct yourAverageStringLibrary {
 };
 ```
 
-SDS strings are already mentioned don't follow this schema, and are instead
+SDS strings as already mentioned don't follow this schema, and are instead
 a single allocation with a prefix that lives *before* the address actually
 returned for the string.
 
@@ -69,7 +69,7 @@ SDS string we passed or allocated a new one. Not remembering to assign back
 the return value of `sdscat` or similar functions to the variable holding
 the SDS string will result in a bug.
 
-**Disadvantage #2**: if an SDS string is shared in different places in your program you have to modify all the references when you modify the string. However most of the times when you need to share SDS strings it is much better to encapsulate them into structures with a `reference count` otherwise it is too easy to incur into memory leaks.
+**Disadvantage #2**: if an SDS string is shared in different places in your program you have to modify all the references when you modify the string. However most of the times when you need to share SDS strings it is much better to encapsulate them into structures with a `reference count` otherwise it is too easy to incur memory leaks.
 
 **Advantage #1**: you can pass SDS strings to functions designed for C functions without accessing a struct member or calling a function, like this:
 
@@ -97,7 +97,7 @@ printf("%c %c\n", s[0], s[1]);
 
 With other libraries your best chance is to assign `string->buf` (or call the function to get the string pointer) to a `char` pointer and work with this. However since the other libraries may reallocate the buffer implicitly every time you call a function that may modify the string you have to get a reference to the buffer again.
 
-**Advantage #3**: single allocation has better cache locality. Usually when you access a string created by a string library using a structure, you have two different allocations for the structure representing the string, and the actual buffer holding the string. Over the time the buffer is reallocated, and it is likely that it ends in a totally different part of memory compared to the structure itself. Since modern programs performances are often dominated by cache misses, SDS may perform better in many workloads.
+**Advantage #3**: single allocation has better cache locality. Usually when you access a string created by a string library using a structure, you have two different allocations for the structure representing the string, and the actual buffer holding the string. Over the time the buffer is reallocated, and it is likely that it ends in a totally different part of memory compared to the structure itself. Since modern programs' performance is often dominated by cache misses, SDS may perform better in many workloads.
 
 SDS basics
 ===
@@ -121,7 +121,7 @@ The above small program already shows a few important things about SDS:
 
 * SDS strings are created, and heap allocated, via the `sdsnew()` function, or other similar functions that we'll see in a moment.
 * SDS strings can be passed to `printf()` like any other C string.
-* SDS strings require to be freed with `sdsfree()`, since they are heap allocated.
+* SDS strings must be freed with `sdsfree()`, since they are heap allocated.
 
 Creating SDS strings
 ---
@@ -135,7 +135,7 @@ sds sdsdup(const sds s);
 
 There are many ways to create SDS strings:
 
-* The `sdsnew` function creates an SDS string starting from a C null terminated string. We already saw how it works in the above example.
+* The `sdsnew` function creates an SDS string from a C null terminated string. We already saw how it works in the above example.
 * The `sdsnewlen` function is similar to `sdsnew` but instead of creating the string assuming that the input string is null terminated, it gets an additional length parameter. This way you can create a string using binary data:
 
     ```c
@@ -355,8 +355,7 @@ Trimming strings and getting ranges
 
 String trimming is a common operation where a set of characters are
 removed from the left and the right of the string. Another useful operation
-regarding strings is the ability to just take a range out of a larger
-string.
+on strings is to just take a range out of a larger string.
 
 ```c
 void sdstrim(sds s, const char *cset);
@@ -390,7 +389,7 @@ that is not in the list of characters to trim: this is why the space between
 `"my"` and `"string"` was preserved in the above example.
 
 Taking ranges is similar, but instead to take a set of characters, it takes
-to indexes, representing the start and the end as specified by zero-based
+two indexes, representing the start and the end as specified by zero-based
 indexes inside the string, to obtain the range that will be retained.
 
 ```c
@@ -441,13 +440,13 @@ simply use `sdscatlen` in order to put more data in the send buffer.
 
 Note that the Redis Cluster bus implements a binary protocol, but since SDS
 is binary safe this is not a problem, so the goal of SDS is not just to provide
-an high level string API for the C programmer but also dynamically allocated
+a high level string API for the C programmer but also dynamically allocated
 buffers that are easy to manage.
 
 String copying
 ---
 
-The most dangerous and infamus function of the standard C library is probably
+The most dangerous and infamous function of the standard C library is probably
 `strcpy`, so perhaps it is funny how in the context of better designed dynamic
 string libraries the concept of copying strings is almost irrelevant. Usually
 what you do is to create strings with the content you want, or concatenating
@@ -463,7 +462,7 @@ sds sdscpylen(sds s, const char *t, size_t len);
 sds sdscpy(sds s, const char *t);
 ```
 
-The string copy function of SDS is called `sdscpylen` and works like that:
+The string copy function of SDS is called `sdscpylen` and works like this:
 
 ```c
 s = sdsnew("Hello World!");
@@ -477,7 +476,7 @@ or a newly allocated one (for example if there was not enough room in the
 old SDS string).
 
 The `sdscpylen` will simply replace what was in the old SDS string with the
-new data you pass using the pointer and length argument. There is a similar
+new data you pass using the pointer and length arguments. There is a similar
 function called `sdscpy` that does not need a length but expects a null
 terminated string instead.
 
@@ -494,11 +493,11 @@ Quoting strings
 
 In order to provide consistent output to the program user, or for debugging
 purposes, it is often important to turn a string that may contain binary
-data or special characters into a quoted string. Here for quoted string
+data or special characters into a quoted string. Here by quoted string
 we mean the common format for String literals in programming source code.
 However today this format is also part of the well known serialization formats
 like JSON and CSV, so it definitely escaped the simple gaol of representing
-literals strings in the source code of programs.
+literal strings in the source code of programs.
 
 An example of quoted string literal is the following:
 
@@ -533,7 +532,7 @@ printf("%s\n", s2);
 output> "a\x01\x02\n"
 ```
 
-This is the rules `sdscatrepr` uses for conversion:
+These are the rules `sdscatrepr` uses for conversion:
 
 * `\` and `"` are quoted with a backslash.
 * It quotes special characters `'\n'`, `'\r'`, `'\t'`, `'\a'` and `'\b'`.
@@ -570,7 +569,7 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
 void sdsfreesplitres(sds *tokens, int count);
 ```
 
-As usually the function can work with both SDS strings or normal C strings.
+As usual the function can work with either SDS strings or normal C strings.
 The first two arguments `s` and `len` specify the string to tokenize, and the
 other two arguments `sep` and `seplen` the separator to use during the
 tokenization. The final argument `count` is a pointer to an integer that will
@@ -597,7 +596,7 @@ The returned array is heap allocated, and the single elements of the array
 are normal SDS strings. You can free everything calling `sdsfreesplitres`
 as in the example. Alternativey you are free to release the array yourself
 using the `free` function and use and/or free the individual SDS strings
-as usually.
+as usual.
 
 A valid approach is to set the array elements you reused in some way to
 `NULL`, and use `sdsfreesplitres` to free all the rest.
@@ -609,9 +608,9 @@ Splitting by a separator is a useful operation, but usually it is not enough
 to perform one of the most common tasks involving some non trivial string
 manipulation, that is, implementing a **Command Line Interface** for a program.
 
-This is why SDS also provides an additional function that allows you to split
+This is why SDS provides an additional function that allows you to split
 arguments provided by the user via the keyboard in an interactive manner, or
-via a file, network, or any other mean, into tokens.
+via a file, network, or any other means, into tokens.
 
 ```c
 sds *sdssplitargs(const char *line, int *argc);
@@ -655,7 +654,7 @@ of all the specified strings separated by the specified separator.
 
 The difference between `sdsjoin` and `sdsjoinsds` is that the former accept
 C null terminated strings as input while the latter requires all the strings
-in the array to be SDS strings. However because of this only `sdsjoinsds` is
+in the array to be SDS strings. Because of this only `sdsjoinsds` is
 able to deal with binary data.
 
 ```c
@@ -681,7 +680,7 @@ SDS internals and advanced usage
 
 At the very beginning of this documentation it was explained how SDS strings
 are allocated, however the prefix stored before the pointer returned to the
-user was classified as an *header* without further details. For an advanced
+user was classified as a *header* without further details. For an advanced
 usage it is better to dig more into the internals of SDS and show the
 structure implementing it:
 
@@ -737,7 +736,7 @@ is two times the minimum required. So for instance if the string currently
 is holding 30 bytes, and we concatenate 2 more bytes, instead of allocating 32
 bytes in total SDS will allocate 64 bytes.
 
-However there is an hard limit to the allocation it can perform ahead, and is
+However there is a hard limit to the allocation it can perform ahead, and is
 defined by `SDS_MAX_PREALLOC`. SDS will never allocate more than 1MB of
 additional space (by default, you can change this default).
 
@@ -774,7 +773,7 @@ output> 109
 output> 59
 ```
 
-NOTE: SDS Low level API use cammelCase in order to warn you that you are playing with the fire.
+NOTE: SDS Low level API uses cammelCase in order to warn you that you are playing with fire.
 
 Manual modifications of SDS strings
 ---
@@ -815,7 +814,7 @@ in the context of SDS has two advantages:
 * You'll not need to update every reference to an SDS string when you modify it (since the new SDS string may point to a different memory location).
 
 While this is definitely a very common programming technique I'll outline
-the basic ideas here. You create a structure like that:
+the basic ideas here. You create a structure like this:
 
 ```c
 struct mySharedStrings {
@@ -825,7 +824,7 @@ struct mySharedStrings {
 ```
 
 When new strings are created, the structure is allocated and returned with
-`refcount` set to 1. The you have two functions to change the reference count
+`refcount` set to 1. Then you have two functions to change the reference count
 of the shared string:
 
 * `incrementStringRefCount` will simply increment `refcount` of 1 in the structure. It will be called every time you add a reference to the string on some new data structure, variable, or whatever.
@@ -845,11 +844,11 @@ Zero copy append from syscalls
 
 At this point you should have all the tools to dig more inside the SDS
 library by reading the source code, however there is an interesting pattern
-you can mount using the low level API exported, that is used inside Redis
+you can implement using the low level API exported, that is used inside Redis
 in order to improve performances of the networking code.
 
-Using `sdsIncrLen()` and `sdsMakeRoomFor()` it is possible to mount the
-following schema, to cat bytes coming from the kernel to the end of an
+Using `sdsIncrLen()` and `sdsMakeRoomFor()` it is possible to implement the
+following scheme, to cat bytes coming from the kernel to the end of an
 sds string without copying into an intermediate buffer:
 
 ```c
