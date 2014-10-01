@@ -44,12 +44,18 @@ struct sdshdr {
     char buf[];
 };
 
-static inline size_t sdslen(const sds s) {
+#ifdef _MSC_VER
+    #define INLINE __forceinline /* use __forceinline (VC++ specific) */
+#else
+    #define INLINE inline        /* use standard inline */
+#endif
+
+static INLINE size_t sdslen(const sds s) {
     struct sdshdr *sh = (void*)(s-sizeof *sh);
     return sh->len;
 }
 
-static inline size_t sdsavail(const sds s) {
+static INLINE size_t sdsavail(const sds s) {
     struct sdshdr *sh = (void*)(s-sizeof *sh);
     return sh->free;
 }
