@@ -882,6 +882,7 @@ int main(void) {
         y = sdscatrepr(sdsempty(),x,sdslen(x));
         test_cond("sdscatrepr(...data...)",
             memcmp(y,"\"\\a\\n\\x00foo\\r\"",15) == 0)
+	sdsfree(y);
 
         {
             int oldfree;
@@ -899,6 +900,7 @@ int main(void) {
             test_cond("sdsIncrLen() -- content", x[0] == '0' && x[1] == '1');
             test_cond("sdsIncrLen() -- len", sh->len == 2);
             test_cond("sdsIncrLen() -- free", sh->free == oldfree-1);
+	    sdsfree(x);
         }
     }
     test_report()
