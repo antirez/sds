@@ -60,7 +60,13 @@ struct sdshdr_h_ {
     char buf[1000];
 };
 
-static inline size_t sdslen(const sds s) {
+#ifdef _MSC_VER
+#  define INLINE __forceinline
+#else
+#  define INLINE inline
+#endif
+
+static INLINE size_t sdslen(const sds s) {
     struct sdshdr_h_ *sh = (struct sdshdr_h_*)
                              (s-(int)offsetof(struct sdshdr_h_, buf));
 
@@ -68,7 +74,7 @@ static inline size_t sdslen(const sds s) {
     return sh->len;
 }
 
-static inline size_t sdsavail(const sds s) {
+static INLINE size_t sdsavail(const sds s) {
     struct sdshdr_h_ *sh = (struct sdshdr_h_*)
                              (s-(int)offsetof(struct sdshdr_h_, buf));
 

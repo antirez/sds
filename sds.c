@@ -42,7 +42,7 @@ typedef struct sdshdr_ {
     char buf[];
 } sdshdr;
 
-static inline sdshdr *sds_start(const sds s)
+static INLINE sdshdr *sds_start(const sds s)
 {
     return (sdshdr*) (s-(int)offsetof(sdshdr, buf));
 }
