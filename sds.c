@@ -200,10 +200,18 @@ size_t sdsAllocSize(sds s) {
 void sdsIncrLen(sds s, int incr) {
     struct sdshdr *sh = (void*) (s-sizeof *sh);;
 
-    assert(sh->free >= incr);
-    sh->len += incr;
-    sh->free -= incr;
-    assert(sh->free >= 0);
+    if (incr >= 0) {
+        size_t tmp = (size_t)(incr);
+        assert(sh->free >= tmp);
+        sh->len += tmp;
+        sh->free -= tmp;
+    }
+    else {
+        size_t tmp = (size_t)(-incr);
+        assert(sh->len >= tmp);
+        sh->len -= tmp;
+        sh->free += tmp;
+    }
     s[sh->len] = '\0';
 }
 
