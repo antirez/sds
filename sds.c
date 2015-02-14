@@ -488,7 +488,11 @@ int sdscmp(const sds s1, const sds s2) {
     l2 = sdslen(s2);
     minlen = (l1 < l2) ? l1 : l2;
     cmp = memcmp(s1,s2,minlen);
-    if (cmp == 0) return l1-l2;
+    if (cmp == 0) {
+        int diff = (int)l1 - (int)l2;
+        /* https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign */
+        return (diff > 0) - (diff < 0);
+    }
     return cmp;
 }
 
