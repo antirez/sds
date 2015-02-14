@@ -30,7 +30,7 @@ later it was moved into Redis where it is used extensively and where it was
 modified in order to be suitable for high performance operations. Now it was
 extracted from Redis and forked as a stand alone project.
 
-Because of its many years life inside Redis, SDS provides both higher level
+Because of its many years of life inside Redis, SDS provides both higher level
 functions for easy strings manipulation in C, but also a set of low level
 functions that make it possible to write high performance code without paying
 a penalty for using an higher level string library.
@@ -50,7 +50,7 @@ struct yourAverageStringLibrary {
 };
 ```
 
-SDS strings are already mentioned don't follow this schema, and are instead
+SDS strings as already mentioned don't follow this schema, and are instead
 a single allocation with a prefix that lives *before* the address actually
 returned for the string.
 
@@ -211,9 +211,9 @@ Destroying strings
 void sdsfree(sds s);
 ```
 
-The destroy an SDS string there is just to call `sdsfree` with the string
-pointer. However note that empty strings created with `sdsempty` need to be
-destroyed as well otherwise they'll result into a memory leak.
+To destroy an SDS string just call `sdsfree` with the string
+pointer. Note, however, that empty strings created with `sdsempty` need to be
+destroyed as well otherwise they'll result in a memory leak.
 
 The function `sdsfree` does not perform any operation if instead of an SDS
 string pointer, `NULL` is passed, so you don't need to check for `NULL` explicitly before calling it:
@@ -310,8 +310,8 @@ s = sdscatprintf(s,"%d+%d = %d",a,b,a+b);
 ```
 
 Often you need to create SDS string directly from `printf` format specifiers.
-Because `sdscatprintf` is actually a function that concatenates strings all
-you need is to concatenate your string to an empty string:
+Because `sdscatprintf` is actually a function that concatenates strings, all
+you need to do is to concatenate your string to an empty string:
 
 
 ```c
@@ -447,7 +447,7 @@ buffers that are easy to manage.
 String copying
 ---
 
-The most dangerous and infamus function of the standard C library is probably
+The most dangerous and infamous function of the standard C library is probably
 `strcpy`, so perhaps it is funny how in the context of better designed dynamic
 string libraries the concept of copying strings is almost irrelevant. Usually
 what you do is to create strings with the content you want, or concatenating
@@ -486,7 +486,7 @@ SDS library, since you can simply create a new SDS string from scratch
 with the new value instead of copying the value in an existing SDS string.
 The reason is efficiency: `sdsnewlen` will always allocate a new string
 while `sdscpylen` will try to reuse the existing string if there is enough
-room to old the new content specified by the user, and will allocate a new
+room to hold the new content specified by the user, and will allocate a new
 one only if needed.
 
 Quoting strings
@@ -497,7 +497,7 @@ purposes, it is often important to turn a string that may contain binary
 data or special characters into a quoted string. Here for quoted string
 we mean the common format for String literals in programming source code.
 However today this format is also part of the well known serialization formats
-like JSON and CSV, so it definitely escaped the simple gaol of representing
+like JSON and CSV, so it definitely escaped the simple goal of representing
 literals strings in the source code of programs.
 
 An example of quoted string literal is the following:
@@ -516,7 +516,7 @@ existing string the quoted string representation of the input string.
 sds sdscatrepr(sds s, const char *p, size_t len);
 ```
 
-The `scscatrepr` (where `repr` means *representation*) follows the usualy
+The `scscatrepr` (where `repr` means *representation*) follows the usually
 SDS string function rules accepting a char pointer and a length, so you can
 use it with SDS strings, normal C strings by using strlen() as `len` argument,
 or binary data. The following is an example usage:
@@ -524,9 +524,9 @@ or binary data. The following is an example usage:
 ```c
 sds s1 = sdsnew("abcd");
 sds s2 = sdsempty();
-s[1] = 1;
-s[2] = 2;
-s[3] = '\n';
+s1[1] = 1;
+s1[2] = 2;
+s1[3] = '\n';
 s2 = sdscatrepr(s2,s1,sdslen(s1));
 printf("%s\n", s2);
 
@@ -561,7 +561,7 @@ A more common separator that consists of a single character is the comma:
 foo,bar,zap
 ```
 
-In many progrems it is useful to process a line in order to obtain the sub
+In many programs it is useful to process a line in order to obtain the sub
 strings it is composed of, so SDS provides a function that returns an
 array of SDS strings given a string and a separator.
 
@@ -595,7 +595,7 @@ output> World!
 
 The returned array is heap allocated, and the single elements of the array
 are normal SDS strings. You can free everything calling `sdsfreesplitres`
-as in the example. Alternativey you are free to release the array yourself
+as in the example. Alternatively you are free to release the array yourself
 using the `free` function and use and/or free the individual SDS strings
 as usually.
 
@@ -672,7 +672,7 @@ Error handling
 All the SDS functions that return an SDS pointer may also return `NULL` on
 out of memory, this is basically the only check you need to perform.
 
-However many modern C programs handle out of memory simply aborting the program
+However many modern C programs handle out of memory by simply aborting the program
 so you may want to do this as well by wrapping `malloc` and other related
 memory allocation calls directly.
 
@@ -686,11 +686,11 @@ usage it is better to dig more into the internals of SDS and show the
 structure implementing it:
 
 ```c
-struct sdshdr {
+typedef struct sdshdr_ {
     int len;
     int free;
     char buf[];
-};
+} sdshdr;
 ```
 
 As you can see, the structure may resemble the one of a conventional string
@@ -849,7 +849,7 @@ you can mount using the low level API exported, that is used inside Redis
 in order to improve performances of the networking code.
 
 Using `sdsIncrLen()` and `sdsMakeRoomFor()` it is possible to mount the
-following schema, to cat bytes coming from the kernel to the end of an
+following schema to cat bytes coming from the kernel to the end of an
 sds string without copying into an intermediate buffer:
 
 ```c
@@ -872,4 +872,4 @@ it without issues.
 Credits and license
 ===
 
-SDS was created by Salvatore Sanfilippo and is released under the BDS two clause license. See the LICENSE file in this source distribution for more information.
+SDS was created by Salvatore Sanfilippo and is released under the BSD two clause license. See the LICENSE file in this source distribution for more information.
