@@ -226,10 +226,18 @@ void sdsIncrLen(sds s, int incr) {
 
     sdshdr *sh = sds_start(s);
 
-    assert(sh->free >= incr);
-    sh->len += incr;
-    sh->free -= incr;
-    assert(sh->free >= 0);
+    if (incr >= 0) {
+        size_t tmp = (size_t)(incr);
+        assert(sh->free >= tmp);
+        sh->len += tmp;
+        sh->free -= tmp;
+    }
+    else {
+        size_t tmp = (size_t)(-incr);
+        assert(sh->len >= tmp);
+        sh->len -= tmp;
+        sh->free += tmp;
+    }
     s[sh->len] = '\0';
 }
 
