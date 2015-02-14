@@ -55,8 +55,8 @@ typedef char *sds;
  * suite, the replacement below should give the same offsets so that `sdslen'
  * and `sdavail' can stay as inline definitions. */
 struct sdshdr_h_ {
-    int len;
-    int free;
+    size_t len;
+    size_t free;
     char buf[1000];
 };
 

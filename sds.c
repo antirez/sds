@@ -37,8 +37,8 @@
 #include "sds.h"
 
 typedef struct sdshdr_ {
-    int len;
-    int free;
+    size_t len;
+    size_t free;
     char buf[];
 } sdshdr;
 
@@ -118,7 +118,7 @@ void sdsupdatelen(sds s) {
     if (s == NULL) return;
 
     sdshdr *sh = sds_start(s);
-    int reallen = strlen(s);
+    size_t reallen = strlen(s);
     sh->free += (sh->len-reallen);
     sh->len = reallen;
 }
@@ -402,7 +402,7 @@ void sdstrim(sds s, const char *cset) {
     ep = end = s+sdslen(s)-1;
     while(sp <= end && strchr(cset, *sp)) sp++;
     while(ep > start && strchr(cset, *ep)) ep--;
-    len = (sp > ep) ? 0 : ((ep-sp)+1);
+    len = (sp > ep) ? 0 : (size_t)((ep-sp)+1);
     if (sh->buf != sp) memmove(sh->buf, sp, len);
     sh->buf[len] = '\0';
     sh->free = sh->free+(sh->len-len);
@@ -431,20 +431,20 @@ void sdsrange(sds s, int start, int end) {
 
     if (len == 0) return;
     if (start < 0) {
-        start = len+start;
+        start = (int)len+start;
         if (start < 0) start = 0;
     }
     if (end < 0) {
-        end = len+end;
+        end = (int)len+end;
         if (end < -1) end = -1;
     }
-    newlen = (start > end) ? 0 : (end-start)+1;
+    newlen = (start > end) ? 0 : (size_t)((end-start)+1);
     if (newlen != 0) {
         if (start >= (signed)len) {
             newlen = 0;
         } else if (end >= (signed)len) {
-            end = len-1;
-            newlen = (start > end) ? 0 : (end-start)+1;
+            end = (int)len-1;
+            newlen = (start > end) ? 0 : (size_t)((end-start)+1);
         }
     } else {
         start = 0;
@@ -457,16 +457,16 @@ void sdsrange(sds s, int start, int end) {
 
 /* Apply tolower() to every character of the sds string 's'. */
 void sdstolower(sds s) {
-    int len = sdslen(s), j;
+    size_t len = sdslen(s), j;
 
-    for (j = 0; j < len; j++) s[j] = tolower((unsigned char)s[j]);
+    for (j = 0; j < len; j++) s[j] = (char)tolower((unsigned char)s[j]);
 }
 
 /* Apply toupper() to every character of the sds string 's'. */
 void sdstoupper(sds s) {
-    int len = sdslen(s), j;
+    size_t len = sdslen(s), j;
 
-    for (j = 0; j < len; j++) s[j] = toupper((unsigned char)s[j]);
+    for (j = 0; j < len; j++) s[j] = (char)toupper((unsigned char)s[j]);
 }
 
 /* Compare two sds strings s1 and s2 with memcmp().
@@ -513,19 +513,23 @@ int sdscmp(const sds s1, const sds s2) {
  * same function but for zero-terminated strings.
  */
 sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count) {
-    int elements = 0, slots = 5, start = 0, j;
+    size_t elements = 0, slots = 5, start = 0, j;
+    size_t len_, seplen_;
     sds *tokens;
 
     if (seplen < 1 || len < 0) return NULL;
 
+    len_ = (size_t)len;
+    seplen_ = (size_t)seplen;
+
     tokens = (sds*) malloc(sizeof(sds)*slots);
     if (tokens == NULL) return NULL;
 
-    if (len == 0) {
+    if (len_ == 0) {
         *count = 0;
         return tokens;
     }
-    for (j = 0; j < (len-(seplen-1)); j++) {
+    for (j = 0; j < (len_-(seplen_-1)); j++) {
         /* make sure there is room for the next element and the final one */
         if (slots < elements+2) {
             sds *newtokens;
@@ -536,24 +540,24 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
             tokens = newtokens;
         }
         /* search the separator */
-        if ((seplen == 1 && *(s+j) == sep[0]) || (memcmp(s+j,sep,seplen) == 0)) {
+        if ((seplen_ == 1 && *(s+j) == sep[0]) || (memcmp(s+j,sep,seplen_) == 0)) {
             tokens[elements] = sdsnewlen(s+start,j-start);
             if (tokens[elements] == NULL) goto cleanup;
             elements++;
-            start = j+seplen;
-            j = j+seplen-1; /* skip the separator */
+            start = j+seplen_;
+            j = j+seplen_-1; /* skip the separator */
         }
     }
     /* Add the final element. We are sure there is room in the tokens array. */
-    tokens[elements] = sdsnewlen(s+start,len-start);
+    tokens[elements] = sdsnewlen(s+start,len_-start);
     if (tokens[elements] == NULL) goto cleanup;
     elements++;
-    *count = elements;
+    *count = (int)elements;
     return tokens;
 
 cleanup:
     {
-        int i;
+        size_t i;
         for (i = 0; i < elements; i++) sdsfree(tokens[i]);
         free(tokens);
         *count = 0;
@@ -577,7 +581,7 @@ sds sdsfromlonglong(long long value) {
     char buf[32], *p;
     unsigned long long v;
 
-    v = (value < 0) ? -value : value;
+    v = (unsigned long long)((value < 0) ? (-value) : value);
     p = buf+31; /* point to the last character */
     do {
         *p-- = '0'+(v%10);
@@ -585,7 +589,7 @@ sds sdsfromlonglong(long long value) {
     } while(v);
     if (value < 0) *p-- = '-';
     p++;
-    return sdsnewlen(p,32-(p-buf));
+    return sdsnewlen(p,(size_t)(32-(p-buf)));
 }
 
 /* Append to the sds string "s" an escaped string representation where
@@ -693,8 +697,8 @@ sds *sdssplitargs(const char *line, int *argc) {
                     {
                         unsigned char byte;
 
-                        byte = (hex_digit_to_int(*(p+2))*16)+
-                                hex_digit_to_int(*(p+3));
+                        byte = (unsigned char)((hex_digit_to_int(*(p+2))*16)+
+                                               hex_digit_to_int(*(p+3)));
                         current = sdscatlen(current,(char*)&byte,1);
                         p += 3;
                     } else if (*p == '\\' && *(p+1)) {
@@ -759,7 +763,7 @@ sds *sdssplitargs(const char *line, int *argc) {
                 if (*p) p++;
             }
             /* add the token to the vector */
-            vector = (char**) realloc(vector,((*argc)+1)*sizeof(char*));
+            vector = (char**) realloc(vector,(size_t)((*argc)+1)*sizeof(char*));
             vector[*argc] = current;
             (*argc)++;
             current = NULL;
@@ -930,7 +934,7 @@ int main(void) {
 	sdsfree(y);
 
         {
-            int oldfree;
+            size_t oldfree;
 
             sdsfree(x);
             x = sdsnew("0");
