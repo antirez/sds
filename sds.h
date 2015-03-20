@@ -36,19 +36,21 @@
 #include <sys/types.h>
 #include <stdarg.h>
 
-typedef char *sds;
+typedef char *sds; /* 字符串指针 */
 
 struct sdshdr {
-    int len;
-    int free;
-    char buf[];
+    int len; /* 已用字符串长度 */
+    int free; /* 可用字符串长度 */
+    char buf[]; /* 字符串存储在这里 */
 };
 
+/* 获取当前sds所在sdshdr中已占用字符串长度 */
 static inline size_t sdslen(const sds s) {
     struct sdshdr *sh = (void*)(s-sizeof *sh);
     return sh->len;
 }
 
+/* 获取当前sds所在sdshdr中可用字符串长度 */
 static inline size_t sdsavail(const sds s) {
     struct sdshdr *sh = (void*)(s-sizeof *sh);
     return sh->free;
