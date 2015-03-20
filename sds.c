@@ -358,6 +358,8 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
  *
  * Output will be just "Hello World".
  */
+
+/* ??????????????????? */
 void sdstrim(sds s, const char *cset) {
   struct sdshdr *sh = (void*) (s-sizeof *sh);;
   char *start, *end, *sp, *ep;
@@ -365,7 +367,7 @@ void sdstrim(sds s, const char *cset) {
 
   sp = start = s;
   ep = end = s+sdslen(s)-1;
-  while(sp <= end && strchr(cset, *sp)) sp++;
+  while(sp <= end && strchr(cset, *sp)) sp++; /* strchr(s, t) 返回t在s里第一次出现的位置 */
   while(ep > start && strchr(cset, *ep)) ep--;
   len = (sp > ep) ? 0 : ((ep-sp)+1);
   if (sh->buf != sp) memmove(sh->buf, sp, len);
@@ -395,6 +397,7 @@ void sdsrange(sds s, int start, int end) {
   size_t newlen, len = sdslen(s);
 
   if (len == 0) return;
+  /* 如果start或end是负数, 将其定位为在字符串中的位置 */
   if (start < 0) {
     start = len+start;
     if (start < 0) start = 0;
@@ -403,6 +406,7 @@ void sdsrange(sds s, int start, int end) {
     end = len+end;
     if (end < 0) end = 0;
   }
+  /* 范围内的长度 */
   newlen = (start > end) ? 0 : (end-start)+1;
   if (newlen != 0) {
     if (start >= (signed)len) {
