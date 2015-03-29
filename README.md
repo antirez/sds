@@ -570,7 +570,7 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
 void sdsfreesplitres(sds *tokens, int count);
 ```
 
-As usually the function can work with both SDS strings or normal C strings.
+As usual the function can work with both SDS strings or normal C strings.
 The first two arguments `s` and `len` specify the string to tokenize, and the
 other two arguments `sep` and `seplen` the separator to use during the
 tokenization. The final argument `count` is a pointer to an integer that will
@@ -597,7 +597,7 @@ The returned array is heap allocated, and the single elements of the array
 are normal SDS strings. You can free everything calling `sdsfreesplitres`
 as in the example. Alternativey you are free to release the array yourself
 using the `free` function and use and/or free the individual SDS strings
-as usually.
+as usual.
 
 A valid approach is to set the array elements you reused in some way to
 `NULL`, and use `sdsfreesplitres` to free all the rest.
