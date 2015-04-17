@@ -44,6 +44,10 @@ struct sdshdr {
     char buf[];
 };
 
+#if defined(_MSC_VER) && !defined(__cplusplus) && !defined(inline) 
+    #define inline __inline
+#endif
+
 static inline size_t sdslen(const sds s) {
     struct sdshdr *sh = (void*)(s-sizeof *sh);
     return sh->len;
@@ -97,5 +101,7 @@ sds sdsMakeRoomFor(sds s, size_t addlen);
 void sdsIncrLen(sds s, int incr);
 sds sdsRemoveFreeSpace(sds s);
 size_t sdsAllocSize(sds s);
+
+#undef inline
 
 #endif
