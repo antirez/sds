@@ -1,0 +1,12 @@
+Version 2.0
+===
+
+* Better memory usage. A bit slower in certain workloads.
+* sdscatfmt() replacement for sdscatprintf() for speed critical code added.
+* Ability to easily switch allocator just changing sdsalloc.h
+* No longer binary compatible with SDS v1.0.
+
+Version 1.0
+===
+
+* Initial SDS stand alone verison.

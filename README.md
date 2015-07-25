@@ -1,6 +1,23 @@
 Simple Dynamic Strings
 ===
 
+**Notes about verison 2**: this is an updated version of SDS in an attempt
+to finally unify Redis, Disque, Hiredis, and the stand alone SDS versions.
+This version is **NOT* binary compatible** with SDS verison 1, but the API
+is 99% compatible so switching to the new lib should be trivial.
+
+Note that this version of SDS may be a slower with certain workloads, but
+uses less memory compared to V1 since header size is dynamic and depends to
+the string to alloc.
+
+Moreover it includes a few more API functions, notably `sdscatfmt` which
+is a faster version of `sdscatprintf` that can be used for the simpler
+cases in order to avoid the libc `printf` family functions performance
+penalty.
+
+How SDS stirngs work
+===
+
 SDS is a string library for C designed to augment the limited libc string
 handling functionalities by adding heap allocated strings that are:
 
