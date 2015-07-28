@@ -137,7 +137,7 @@ sds sdsnewlen(const void *init, size_t initlen) {
 /* Create an empty (zero length) sds string. Even in this case the string
  * always has an implicit null term. */
 sds sdsempty(void) {
-    return sdsnewlen("",0);
+    return sdsnewlen("", 0);
 }
 
 /* Create a new sds string starting from a null terminated C string. */
@@ -363,7 +363,7 @@ sds sdsgrowzero(sds s, size_t len) {
     if (s == NULL) return NULL;
 
     /* Make sure added region doesn't contain garbage */
-    memset(s+curlen,0,(len-curlen+1)); /* also set trailing \0 byte */
+    memset(s+curlen, 0, (len-curlen+1)); /* also set trailing \0 byte */
     sdssetlen(s, len);
     return s;
 }
@@ -404,7 +404,7 @@ sds sdscatsds(sds s, const sds t) {
  * safe string pointed by 't' of length 'len' bytes. */
 sds sdscpylen(sds s, const char *t, size_t len) {
     if (sdsalloc(s) < len) {
-        s = sdsMakeRoomFor(s,len-sdslen(s));
+        s = sdsMakeRoomFor(s, len-sdslen(s));
         if (s == NULL) return NULL;
     }
     memcpy(s, t, len);
@@ -492,9 +492,9 @@ int sdsull2str(char *s, unsigned long long v) {
  */
 sds sdsfromlonglong(long long value) {
     char buf[SDS_LLSTR_SIZE];
-    int len = sdsll2str(buf,value);
+    int len = sdsll2str(buf, value);
 
-    return sdsnewlen(buf,len);
+    return sdsnewlen(buf, len);
 }
 
 /* Like sdscatprintf() but gets va_list instead of being variadic. */
@@ -593,7 +593,7 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
 
         /* Make sure there is always space for at least 1 char. */
         if (sdsavail(s)==0) {
-            s = sdsMakeRoomFor(s,1);
+            s = sdsMakeRoomFor(s, 1);
         }
 
         switch(*f) {
@@ -606,55 +606,55 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
                 str = va_arg(ap,char*);
                 l = (next == 's') ? strlen(str) : sdslen(str);
                 if (sdsavail(s) < l) {
-                    s = sdsMakeRoomFor(s,l);
+                    s = sdsMakeRoomFor(s, l);
                 }
-                memcpy(s+i,str,l);
-                sdsinclen(s,l);
+                memcpy(s+i, str, l);
+                sdsinclen(s, l);
                 i += l;
                 break;
             case 'i':
             case 'I':
                 if (next == 'i')
-                    num = va_arg(ap,int);
+                    num = va_arg(ap, int);
                 else
-                    num = va_arg(ap,long long);
+                    num = va_arg(ap, long long);
                 {
                     char buf[SDS_LLSTR_SIZE];
                     l = sdsll2str(buf,num);
                     if (sdsavail(s) < l) {
-                        s = sdsMakeRoomFor(s,l);
+                        s = sdsMakeRoomFor(s, l);
                     }
-                    memcpy(s+i,buf,l);
-                    sdsinclen(s,l);
+                    memcpy(s+i, buf, l);
+                    sdsinclen(s, l);
                     i += l;
                 }
                 break;
             case 'u':
             case 'U':
                 if (next == 'u')
-                    unum = va_arg(ap,unsigned int);
+                    unum = va_arg(ap, unsigned int);
                 else
-                    unum = va_arg(ap,unsigned long long);
+                    unum = va_arg(ap, unsigned long long);
                 {
                     char buf[SDS_LLSTR_SIZE];
                     l = sdsull2str(buf,unum);
                     if (sdsavail(s) < l) {
-                        s = sdsMakeRoomFor(s,l);
+                        s = sdsMakeRoomFor(s, l);
                     }
-                    memcpy(s+i,buf,l);
-                    sdsinclen(s,l);
+                    memcpy(s+i, buf, l);
+                    sdsinclen(s, l);
                     i += l;
                 }
                 break;
             default: /* Handle %% and generally %<unknown>. */
                 s[i++] = next;
-                sdsinclen(s,1);
+                sdsinclen(s, 1);
                 break;
             }
             break;
         default:
             s[i++] = *f;
-            sdsinclen(s,1);
+            sdsinclen(s, 1);
             break;
         }
         f++;
@@ -736,7 +736,7 @@ void sdsrange(sds s, int start, int end) {
     }
     if (start && newlen) memmove(s, s+start, newlen);
     s[newlen] = 0;
-    sdssetlen(s,newlen);
+    sdssetlen(s, newlen);
 }
 
 /* Apply tolower() to every character of the sds string 's'. */
@@ -771,7 +771,7 @@ int sdscmp(const sds s1, const sds s2) {
     l1 = sdslen(s1);
     l2 = sdslen(s2);
     minlen = (l1 < l2) ? l1 : l2;
-    cmp = memcmp(s1,s2,minlen);
+    cmp = memcmp(s1, s2, minlen);
     if (cmp == 0) return l1-l2;
     return cmp;
 }
