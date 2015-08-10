@@ -77,7 +77,7 @@ approach:
 **Disadvantage #1**: many functions return the new string as value, since sometimes SDS requires to create a new string with more space, so the most SDS API calls look like this:
 
 ```c
-s = sdscat(s,"Some more data");
+s = sdscat(s, "Some more data");
 ```
 
 As you can see `s` is used as input for `sdscat` but is also set to the value
@@ -162,7 +162,7 @@ There are many ways to create SDS strings:
     buf[0] = 'A';
     buf[1] = 'B';
     buf[2] = 'C';
-    mystring = sdsnewlen(buf,3);
+    mystring = sdsnewlen(buf, 3);
     printf("%s of len %d\n", mystring, (int) sdslen(mystring));
 
     output> ABC of len 3
@@ -265,7 +265,7 @@ printf("%s\n", s);
 output> Hello World!
 ```
 
-Sometimes you want to cat an SDS string to another SDS string, so you don't
+Sometimes you want to cat a SDS string to another SDS string, so you don't
 need to specify the length, but at the same time the string does not need to
 be null terminated but can contain any binary data. For this there is a
 special function:
@@ -279,7 +279,7 @@ Usage is straightforward:
 ```c
 sds s1 = sdsnew("aaa");
 sds s2 = sdsnew("bbb");
-s1 = sdscatsds(s1,s2);
+s1 = sdscatsds(s1, s2);
 sdsfree(s2);
 printf("%s\n", s1);
 
@@ -300,7 +300,7 @@ it with zero bytes.
 
 ```c
 sds s = sdsnew("Hello");
-s = sdsgrowzero(s,6);
+s = sdsgrowzero(s, 6);
 s[5] = '!'; /* We are sure this is safe because of sdsgrowzero() */
 printf("%s\n', s);
 
@@ -323,7 +323,7 @@ Example:
 sds s;
 int a = 10, b = 20;
 s = sdsnew("The sum is: ");
-s = sdscatprintf(s,"%d+%d = %d",a,b,a+b);
+s = sdscatprintf(s, "%d+%d = %d", a, b, a + b);
 ```
 
 Often you need to create SDS string directly from `printf` format specifiers.
@@ -342,7 +342,7 @@ You can use `sdscatprintf` in order to convert numbers into SDS strings:
 
 ```c
 int some_integer = 100;
-sds num = sdscatprintf(sdsempty(),"%d\n", some_integer);
+sds num = sdscatprintf(sdsempty(), "%d\n", some_integer);
 ```
 
 However this is slow and we have a special function to make it efficient.
@@ -394,8 +394,8 @@ from an SDS strings:
 
 ```c
 sds s = sdsnew("         my string\n\n  ");
-sdstrim(s," \n");
-printf("-%s-\n",s);
+sdstrim(s, " \n");
+printf("-%s-\n", s);
 
 output> -my string-
 ```
@@ -407,13 +407,13 @@ that is not in the list of characters to trim: this is why the space between
 `"my"` and `"string"` was preserved in the above example.
 
 Taking ranges is similar, but instead to take a set of characters, it takes
-to indexes, representing the start and the end as specified by zero-based
+two indexes, representing the start and the end as specified by zero-based
 indexes inside the string, to obtain the range that will be retained.
 
 ```c
 sds s = sdsnew("Hello World!");
-sdsrange(s,1,4);
-printf("-%s-\n");
+sdsrange(s, 1, 4);
+printf("-%s-\n", s);
 
 output> -ello-
 ```
@@ -423,10 +423,10 @@ string, so that `-1` means the last character, `-2` the penultimate, and so fort
 
 ```c
 sds s = sdsnew("Hello World!");
-sdsrange(s,6,-1);
-printf("-%s-\n");
-sdsrange(s,0,-2);
-printf("-%s-\n");
+sdsrange(s, 6, -1);
+printf("-%s-\n", s);
+sdsrange(s, 0, -2);
+printf("-%s-\n", s);
 
 output> -World!-
 output> -World-
@@ -444,7 +444,7 @@ void clusterWriteHandler(..., int fd, void *privdata, ...) {
     if (nwritten <= 0) {
         /* Error handling... */
     }
-    sdsrange(link->sndbuf,nwritten,-1);
+    sdsrange(link->sndbuf, nwritten, -1);
     ... more code here ...
 }
 ```
@@ -484,7 +484,7 @@ The string copy function of SDS is called `sdscpylen` and works like that:
 
 ```c
 s = sdsnew("Hello World!");
-s = sdscpylen(s,"Hello Superman!",15);
+s = sdscpylen(s, "Hello Superman!", 15);
 ```
 
 As you can see the function receives as input the SDS string `s`, but also
@@ -503,7 +503,7 @@ SDS library, since you can simply create a new SDS string from scratch
 with the new value instead of copying the value in an existing SDS string.
 The reason is efficiency: `sdsnewlen` will always allocate a new string
 while `sdscpylen` will try to reuse the existing string if there is enough
-room to old the new content specified by the user, and will allocate a new
+room to hold the new content specified by the user, and will allocate a new
 one only if needed.
 
 Quoting strings
@@ -544,7 +544,7 @@ sds s2 = sdsempty();
 s[1] = 1;
 s[2] = 2;
 s[3] = '\n';
-s2 = sdscatrepr(s2,s1,sdslen(s1));
+s2 = sdscatrepr(s2, s1, sdslen(s1));
 printf("%s\n", s2);
 
 output> "a\x01\x02\n"
@@ -600,11 +600,11 @@ sds *tokens;
 int count, j;
 
 sds line = sdsnew("Hello World!");
-tokens = sdssplitlen(line,sdslen(line)," ",1,&count);
+tokens = sdssplitlen(line,sdslen(line), " ", 1, &count);
 
 for (j = 0; j < count; j++)
     printf("%s\n", tokens[j]);
-sdsfreesplitres(tokens,count);
+sdsfreesplitres(tokens, count);
 
 output> Hello
 output> World!
@@ -676,8 +676,8 @@ in the array to be SDS strings. However because of this only `sdsjoinsds` is
 able to deal with binary data.
 
 ```c
-char *tokens[3] = {"foo","bar","zap"};
-sds s = sdsjoin(tokens,3,"|",1);
+char *tokens[3] = {"foo", "bar", "zap"};
+sds s = sdsjoin(tokens, 3, "|", 1);
 printf("%s\n", s);
 
 output> foo|bar|zap
@@ -739,9 +739,9 @@ will create extra free space at the end, like in the following program:
 
 ```c
 s = sdsempty();
-s = sdscat(s,"foo");
-s = sdscat(s,"bar");
-s = sdscat(s,"123");
+s = sdscat(s, "foo");
+s = sdscat(s, "bar");
+s = sdscat(s, "123");
 ```
 
 Since SDS tries to be efficient it can't afford to reallocate the string every
@@ -782,7 +782,7 @@ total allocation for a given string, and is called `sdsAllocSize`.
 
 ```c
 sds s = sdsnew("Ladies and gentlemen");
-s = sdscat(s,"... welcome to the C language.");
+s = sdscat(s, "... welcome to the C language.");
 printf("%d\n", (int) sdsAllocSize(s));
 s = sdsRemoveFreeSpace(s);
 printf("%d\n", (int) sdsAllocSize(s));
@@ -872,7 +872,7 @@ sds string without copying into an intermediate buffer:
 ```c
 oldlen = sdslen(s);
 s = sdsMakeRoomFor(s, BUFFER_SIZE);
-nread = read(fd, s+oldlen, BUFFER_SIZE);
+nread = read(fd, s + oldlen, BUFFER_SIZE);
 ... check for nread <= 0 and handle it ...
 sdsIncrLen(s, nread);
 ```
@@ -889,7 +889,7 @@ it without issues.
 Credits and license
 ===
 
-SDS was created by Salvatore Sanfilippo and is released under the BDS two clause license. See the LICENSE file in this source distribution for more information.
+SDS was created by Salvatore Sanfilippo and is released under the BSD two clause license. See the LICENSE file in this source distribution for more information.
 
 Oran Agra improved SDS version 2 by adding dynamic sized headers in order to
 save memory for small strings and allow strings greater than 4GB.
