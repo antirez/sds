@@ -776,6 +776,28 @@ int sdscmp(const sds s1, const sds s2) {
     return cmp;
 }
 
+/* Compare an sds string s1 and string s2 of length l2 with memcmp().
+ *
+ * Return value:
+ *
+ *     positive if s1 > s2.
+ *     negative if s1 < s2.
+ *     0 if s1 and s2 are exactly the same binary string.
+ *
+ * If the two strings compare equal up until minlen, but one of the two has
+ * additional characters, the longer string is considered to be greater than
+ * the smaller one. */
+int sdscmpstr(const sds s1, const char *s2, size_t l2) {
+    size_t l1, minlen;
+    int cmp;
+
+    l1 = sdslen(s1);
+    minlen = (l1 < l2) ? l1 : l2;
+    cmp = memcmp(s1,s2,minlen);
+    if (cmp == 0) return l1-l2;
+    return cmp;
+}
+
 /* Split 's' with separator in 'sep'. An array
  * of sds strings is returned. *count will be set
  * by reference to the number of tokens returned.
@@ -1097,6 +1119,7 @@ sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen) {
 int sdsTest(void) {
     {
         sds x = sdsnew("foo"), y;
+        char z[4];
 
         test_cond("Create a string and obtain the length",
             sdslen(x) == 3 && memcmp(x,"foo\0",4) == 0)
@@ -1210,6 +1233,21 @@ int sdsTest(void) {
         x = sdsnew("aar");
         y = sdsnew("bar");
         test_cond("sdscmp(aar,bar)", sdscmp(x,y) < 0)
+
+        sdsfree(x);
+        x = sdsnew("foo");
+        strcpy(z, "foa");
+        test_cond("sdscmpstr(foo,foa,3)", sdscmpstr(x,z,3) > 0)
+
+        sdsfree(x);
+        x = sdsnew("bar");
+        strcpy(z, "bar");
+        test_cond("sdscmpstr(bar,bar,3)", sdscmpstr(x,z,3) == 0)
+
+        sdsfree(x);
+        x = sdsnew("aar");
+        strcpy(z, "bar");
+        test_cond("sdscmpstr(aar,bar,3)", sdscmpstr(x,z,3) < 0)
 
         sdsfree(y);
         sdsfree(x);
