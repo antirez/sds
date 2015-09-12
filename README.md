@@ -533,7 +533,7 @@ existing string the quoted string representation of the input string.
 sds sdscatrepr(sds s, const char *p, size_t len);
 ```
 
-The `scscatrepr` (where `repr` means *representation*) follows the usualy
+The `sdscatrepr` (where `repr` means *representation*) follows the usualy
 SDS string function rules accepting a char pointer and a length, so you can
 use it with SDS strings, normal C strings by using strlen() as `len` argument,
 or binary data. The following is an example usage:
@@ -842,7 +842,7 @@ struct mySharedStrings {
 ```
 
 When new strings are created, the structure is allocated and returned with
-`refcount` set to 1. The you have two functions to change the reference count
+`refcount` set to 1. Then you have two functions to change the reference count
 of the shared string:
 
 * `incrementStringRefCount` will simply increment `refcount` of 1 in the structure. It will be called every time you add a reference to the string on some new data structure, variable, or whatever.
