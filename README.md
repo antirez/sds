@@ -1,9 +1,9 @@
 Simple Dynamic Strings
 ===
 
-**Notes about verison 2**: this is an updated version of SDS in an attempt
+**Notes about version 2**: this is an updated version of SDS in an attempt
 to finally unify Redis, Disque, Hiredis, and the stand alone SDS versions.
-This version is **NOT* binary compatible** with SDS verison 1, but the API
+This version is **NOT* binary compatible** with SDS version 1, but the API
 is 99% compatible so switching to the new lib should be trivial.
 
 Note that this version of SDS may be a slower with certain workloads, but
@@ -168,7 +168,7 @@ There are many ways to create SDS strings:
     output> ABC of len 3
     ```
 
-  Note: `sdslen` return value is casted to `int` because it returns a `size_t`
+  Note: `sdslen` return value is cast to `int` because it returns a `size_t`
 type. You can use the right `printf` specifier instead of casting.
 
 * The `sdsempty()` function creates an empty zero-length string:
@@ -464,7 +464,7 @@ buffers that are easy to manage.
 String copying
 ---
 
-The most dangerous and infamus function of the standard C library is probably
+The most dangerous and infamous function of the standard C library is probably
 `strcpy`, so perhaps it is funny how in the context of better designed dynamic
 string libraries the concept of copying strings is almost irrelevant. Usually
 what you do is to create strings with the content you want, or concatenating
@@ -533,7 +533,7 @@ existing string the quoted string representation of the input string.
 sds sdscatrepr(sds s, const char *p, size_t len);
 ```
 
-The `scscatrepr` (where `repr` means *representation*) follows the usualy
+The `scscatrepr` (where `repr` means *representation*) follows the usually
 SDS string function rules accepting a char pointer and a length, so you can
 use it with SDS strings, normal C strings by using strlen() as `len` argument,
 or binary data. The following is an example usage:
@@ -578,7 +578,7 @@ A more common separator that consists of a single character is the comma:
 foo,bar,zap
 ```
 
-In many progrems it is useful to process a line in order to obtain the sub
+In many programs it is useful to process a line in order to obtain the sub
 strings it is composed of, so SDS provides a function that returns an
 array of SDS strings given a string and a separator.
 
@@ -612,7 +612,7 @@ output> World!
 
 The returned array is heap allocated, and the single elements of the array
 are normal SDS strings. You can free everything calling `sdsfreesplitres`
-as in the example. Alternativey you are free to release the array yourself
+as in the example. Alternatively you are free to release the array yourself
 using the `free` function and use and/or free the individual SDS strings
 as usually.
 
@@ -791,7 +791,7 @@ output> 109
 output> 59
 ```
 
-NOTE: SDS Low level API use cammelCase in order to warn you that you are playing with the fire.
+NOTE: SDS Low level API use camelCase in order to warn you that you are playing with the fire.
 
 Manual modifications of SDS strings
 ---
@@ -889,7 +889,7 @@ it without issues.
 Credits and license
 ===
 
-SDS was created by Salvatore Sanfilippo and is released under the BDS two clause license. See the LICENSE file in this source distribution for more information.
+SDS was created by Salvatore Sanfilippo and is released under the BSD two clause license. See the LICENSE file in this source distribution for more information.
 
 Oran Agra improved SDS version 2 by adding dynamic sized headers in order to
 save memory for small strings and allow strings greater than 4GB.
