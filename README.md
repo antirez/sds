@@ -15,7 +15,7 @@ is a faster version of `sdscatprintf` that can be used for the simpler
 cases in order to avoid the libc `printf` family functions performance
 penalty.
 
-How SDS stirngs work
+How SDS strings work
 ===
 
 SDS is a string library for C designed to augment the limited libc string
@@ -882,9 +882,31 @@ sdsIncrLen(s, nread);
 Embedding SDS into your project
 ===
 
-This is as simple as copying the `sds.c` and `sds.h` files inside your
-project. The source code is small and every C99 compiler should deal with
+This is as simple as copying the following files inside your
+project:
+
+* sds.c
+* sds.h
+* sdsalloc.h
+
+The source code is small and every C99 compiler should deal with
 it without issues.
+
+Using a different allocator for SDS
+===
+
+Internally sds.c uses the allocator defined into `sdsalloc.h`. This header
+file just defines macros for malloc, realloc and free, and by default libc
+`malloc()`, `realloc()` and `free()` are used. Just edit this file in order
+to change the name of the allocation functions.
+
+The program using SDS can call the SDS allocator in order to manipulate
+SDS pointers (usually not needed but sometimes the program may want to
+do advanced things) by using the API exported by SDS in order to call the
+allocator used. This is especially useful when the program linked to SDS
+is using a different allocator compared to what SDS is using.
+
+The API to access the allocator used by SDS is composed of three functions: `sds_malloc()`, `sds_realloc()` and `sds_free()`.
 
 Credits and license
 ===
