@@ -1,3 +1,5 @@
+[This is a fork of the SDS library version 1, incompatible with version 2.]
+
 Simple Dynamic Strings
 ===
 
