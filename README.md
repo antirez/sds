@@ -334,8 +334,8 @@ you need is to concatenate your string to an empty string:
 ```c
 char *name = "Anna";
 int loc = 2500;
-sds s;
-s = sdscatprintf(sdsempty(), "%s wrote %d lines of LISP\n", name, loc);
+sds s = sdsempty();
+s = sdscatprintf(s, "%s wrote %d lines of LISP\n", name, loc);
 ```
 
 You can use `sdscatprintf` in order to convert numbers into SDS strings:
