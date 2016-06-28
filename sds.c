@@ -789,8 +789,7 @@ int sdscmp(const sds s1, const sds s2) {
  * elements "foo" and "bar".
  *
  * This version of the function is binary-safe but
- * requires length arguments. sdssplit() is just the
- * same function but for zero-terminated strings.
+ * requires length arguments.
  */
 sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count) {
     int elements = 0, slots = 5, start = 0, j;
