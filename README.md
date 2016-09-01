@@ -835,7 +835,7 @@ While this is definitely a very common programming technique I'll outline
 the basic ideas here. You create a structure like that:
 
 ```c
-struct mySharedStrings {
+struct mySharedString {
     int refcount;
     sds string;
 }
