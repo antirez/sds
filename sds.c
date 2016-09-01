@@ -35,6 +35,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <limits.h>
 #include "sds.h"
 #include "sdsalloc.h"
 
@@ -55,14 +56,16 @@ static inline int sdsHdrSize(char type) {
 }
 
 static inline char sdsReqType(size_t string_size) {
-    if (string_size < 32)
+    if (string_size < 1<<5)
         return SDS_TYPE_5;
-    if (string_size < 0xff)
+    if (string_size < 1<<8)
         return SDS_TYPE_8;
-    if (string_size < 0xffff)
+    if (string_size < 1<<16)
         return SDS_TYPE_16;
-    if (string_size < 0xffffffff)
+#if (LONG_MAX == LLONG_MAX)
+    if (string_size < 1ll<<32)
         return SDS_TYPE_32;
+#endif
     return SDS_TYPE_64;
 }
 
