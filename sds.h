@@ -33,6 +33,11 @@
 #ifndef __SDS_H
 #define __SDS_H
 
+#ifndef __GNUC__
+#  undef __attribute__
+#  define __attribute__(x) /* nothing */
+#endif
+
 #define SDS_MAX_PREALLOC (1024*1024)
 
 #include <sys/types.h>
@@ -227,12 +232,8 @@ sds sdscpylen(sds s, const char *t, size_t len);
 sds sdscpy(sds s, const char *t);
 
 sds sdscatvprintf(sds s, const char *fmt, va_list ap);
-#ifdef __GNUC__
 sds sdscatprintf(sds s, const char *fmt, ...)
     __attribute__((format(printf, 2, 3)));
-#else
-sds sdscatprintf(sds s, const char *fmt, ...);
-#endif
 
 sds sdscatfmt(sds s, char const *fmt, ...);
 sds sdstrim(sds s, const char *cset);
@@ -240,21 +241,25 @@ void sdsrange(sds s, int start, int end);
 void sdsupdatelen(sds s);
 void sdsclear(sds s);
 int sdscmp(const sds s1, const sds s2);
-sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count);
+sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count)
+    __attribute__((warn_unused_result));
 void sdsfreesplitres(sds *tokens, int count);
 void sdstolower(sds s);
 void sdstoupper(sds s);
 sds sdsfromlonglong(long long value);
 sds sdscatrepr(sds s, const char *p, size_t len);
-sds *sdssplitargs(const char *line, int *argc);
+sds *sdssplitargs(const char *line, int *argc)
+    __attribute__((warn_unused_result));
 sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen);
 sds sdsjoin(char **argv, int argc, char *sep);
 sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen);
 
 /* Low level functions exposed to the user API */
-sds sdsMakeRoomFor(sds s, size_t addlen);
+sds sdsMakeRoomFor(sds s, size_t addlen)
+    __attribute__((warn_unused_result));
 void sdsIncrLen(sds s, int incr);
-sds sdsRemoveFreeSpace(sds s);
+sds sdsRemoveFreeSpace(sds s)
+    __attribute__((warn_unused_result));
 size_t sdsAllocSize(sds s);
 void *sdsAllocPtr(sds s);
 
