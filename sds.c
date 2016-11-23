@@ -744,16 +744,18 @@ void sdsrange(sds s, int start, int end) {
 
 /* Apply tolower() to every character of the sds string 's'. */
 void sdstolower(sds s) {
-    int len = sdslen(s), j;
-
-    for (j = 0; j < len; j++) s[j] = tolower(s[j]);
+    while(*s){
+        if((*s > 64) && (*s < 91)) *s = *s+32;
+        s++;
+    }
 }
 
 /* Apply toupper() to every character of the sds string 's'. */
 void sdstoupper(sds s) {
-    int len = sdslen(s), j;
-
-    for (j = 0; j < len; j++) s[j] = toupper(s[j]);
+    while(*s){
+        if((*s > 96) && (*s < 123)) *s = *s-32;
+        s++;
+    }
 }
 
 /* Compare two sds strings s1 and s2 with memcmp().
@@ -1128,6 +1130,23 @@ int sdsTest(void) {
 
         x = sdscpy(x,"xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk");
         test_cond("sdscpy() against an originally shorter string",
+            sdslen(x) == 33 &&
+            memcmp(x,"xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk\0",33) == 0)
+
+        sdstoupper(x);
+        test_cond("sdstoupper() against an originally lower case string",
+            memcmp(x,"XYZXXXXXXXXXXYYYYYYYYYYKKKKKKKKKK\0",33) == 0)
+
+        sdstoupper(x);
+        test_cond("sdstoupper() against an originally upper case string",
+            memcmp(x,"XYZXXXXXXXXXXYYYYYYYYYYKKKKKKKKKK\0",33) == 0)
+
+        sdstolower(x);
+        test_cond("sdstolower() against an originally upper case string",
+            memcmp(x,"xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk\0",33) == 0)
+
+        sdstolower(x);
+        test_cond("sdstolower() against an originally lower case string",
             sdslen(x) == 33 &&
             memcmp(x,"xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk\0",33) == 0)
 
