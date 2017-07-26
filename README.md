@@ -578,7 +578,7 @@ A more common separator that consists of a single character is the comma:
 foo,bar,zap
 ```
 
-In many progrems it is useful to process a line in order to obtain the sub
+In many programs it is useful to process a line in order to obtain the sub
 strings it is composed of, so SDS provides a function that returns an
 array of SDS strings given a string and a separator.
 
