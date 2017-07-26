@@ -73,7 +73,7 @@ static inline char sdsReqType(size_t string_size) {
  * and 'initlen'.
  * If NULL is used for 'init' the string is initialized with zero bytes.
  *
- * The string is always null-termined (all the sds strings are, always) so
+ * The string is always null-terminated (all the sds strings are, always) so
  * even if you create an sds string with:
  *
  * mystring = sdsnewlen("abc",3);
@@ -387,7 +387,7 @@ sds sdscatlen(sds s, const void *t, size_t len) {
     return s;
 }
 
-/* Append the specified null termianted C string to the sds string 's'.
+/* Append the specified null terminated C string to the sds string 's'.
  *
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
@@ -416,7 +416,7 @@ sds sdscpylen(sds s, const char *t, size_t len) {
     return s;
 }
 
-/* Like sdscpylen() but 't' must be a null-termined string so that the length
+/* Like sdscpylen() but 't' must be a null-terminated string so that the length
  * of the string is obtained with strlen(). */
 sds sdscpy(sds s, const char *t) {
     return sdscpylen(s, t, strlen(t));
@@ -670,7 +670,7 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
 }
 
 /* Remove the part of the string from left and from right composed just of
- * contiguous characters found in 'cset', that is a null terminted C string.
+ * contiguous characters found in 'cset', that is a null terminated C string.
  *
  * After the call, the modified sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call.
