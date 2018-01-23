@@ -375,7 +375,7 @@ sds sdstrim(sds s, const char *cset);
  * s = sdsnew("Hello World");
  * sdsrange(s,1,-1); => "ello World"
  */
-void sdsrange(sds s, int start, int end);
+void sdsrange(sds s, ssize_t start, ssize_t end);
 
 /* Set the sds string length to the length as obtained with strlen(), so
  * considering as content only up to the first null term character.
@@ -428,7 +428,7 @@ int sdscmp(const sds s1, const sds s2);
  * requires length arguments. sdssplit() is just the
  * same function but for zero-terminated strings.
  */
-sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count);
+sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count);
 
 /* Free the result returned by sdssplitlen(), or do nothing if 'tokens' is NULL. */
 void sdsfreesplitres(sds *tokens, int count);
@@ -525,7 +525,7 @@ sds sdsMakeRoomFor(sds s, size_t addlen);
  * ... check for nread <= 0 and handle it ...
  * sdsIncrLen(s, nread);
  */
-void sdsIncrLen(sds s, int incr);
+void sdsIncrLen(sds s, ssize_t incr);
 
 /* Reallocate the sds string so that it has no free space at the end. The
  * contained string remains not altered, but next concatenation operations
