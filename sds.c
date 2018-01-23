@@ -69,18 +69,6 @@ static inline char sdsReqType(size_t string_size) {
     return SDS_TYPE_64;
 }
 
-/* Create a new sds string with the content specified by the 'init' pointer
- * and 'initlen'.
- * If NULL is used for 'init' the string is initialized with zero bytes.
- *
- * The string is always null-termined (all the sds strings are, always) so
- * even if you create an sds string with:
- *
- * mystring = sdsnewlen("abc",3);
- *
- * You can print the string with printf() as there is an implicit \0 at the
- * end of the string. However the string is binary safe and can contain
- * \0 characters in the middle, as the length is stored in the sds header. */
 sds sdsnewlen(const void *init, size_t initlen) {
     void *sh;
     sds s;
@@ -137,63 +125,34 @@ sds sdsnewlen(const void *init, size_t initlen) {
     return s;
 }
 
-/* Create an empty (zero length) sds string. Even in this case the string
- * always has an implicit null term. */
 sds sdsempty(void) {
     return sdsnewlen("",0);
 }
 
-/* Create a new sds string starting from a null terminated C string. */
 sds sdsnew(const char *init) {
     size_t initlen = (init == NULL) ? 0 : strlen(init);
     return sdsnewlen(init, initlen);
 }
 
-/* Duplicate an sds string. */
 sds sdsdup(const sds s) {
     return sdsnewlen(s, sdslen(s));
 }
 
-/* Free an sds string. No operation is performed if 's' is NULL. */
 void sdsfree(sds s) {
     if (s == NULL) return;
     s_free((char*)s-sdsHdrSize(s[-1]));
 }
 
-/* Set the sds string length to the length as obtained with strlen(), so
- * considering as content only up to the first null term character.
- *
- * This function is useful when the sds string is hacked manually in some
- * way, like in the following example:
- *
- * s = sdsnew("foobar");
- * s[2] = '\0';
- * sdsupdatelen(s);
- * printf("%d\n", sdslen(s));
- *
- * The output will be "2", but if we comment out the call to sdsupdatelen()
- * the output will be "6" as the string was modified but the logical length
- * remains 6 bytes. */
 void sdsupdatelen(sds s) {
     int reallen = strlen(s);
     sdssetlen(s, reallen);
 }
 
-/* Modify an sds string in-place to make it empty (zero length).
- * However all the existing buffer is not discarded but set as free space
- * so that next append operations will not require allocations up to the
- * number of bytes previously available. */
 void sdsclear(sds s) {
     sdssetlen(s, 0);
     s[0] = '\0';
 }
 
-/* Enlarge the free space at the end of the sds string so that the caller
- * is sure that after calling this function can overwrite up to addlen
- * bytes after the end of the string, plus one more byte for nul term.
- *
- * Note: this does not change the *length* of the sds string as returned
- * by sdslen(), but only the free buffer space we have. */
 sds sdsMakeRoomFor(sds s, size_t addlen) {
     void *sh, *newsh;
     size_t avail = sdsavail(s);
@@ -239,12 +198,6 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
     return s;
 }
 
-/* Reallocate the sds string so that it has no free space at the end. The
- * contained string remains not altered, but next concatenation operations
- * will require a reallocation.
- *
- * After the call, the passed sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
 sds sdsRemoveFreeSpace(sds s) {
     void *sh, *newsh;
     char type, oldtype = s[-1] & SDS_TYPE_MASK;
@@ -278,47 +231,15 @@ sds sdsRemoveFreeSpace(sds s) {
     return s;
 }
 
-/* Return the total size of the allocation of the specifed sds string,
- * including:
- * 1) The sds header before the pointer.
- * 2) The string.
- * 3) The free buffer at the end if any.
- * 4) The implicit null term.
- */
 size_t sdsAllocSize(sds s) {
     size_t alloc = sdsalloc(s);
     return sdsHdrSize(s[-1])+alloc+1;
 }
 
-/* Return the pointer of the actual SDS allocation (normally SDS strings
- * are referenced by the start of the string buffer). */
 void *sdsAllocPtr(sds s) {
     return (void*) (s-sdsHdrSize(s[-1]));
 }
 
-/* Increment the sds length and decrements the left free space at the
- * end of the string according to 'incr'. Also set the null term
- * in the new end of the string.
- *
- * This function is used in order to fix the string length after the
- * user calls sdsMakeRoomFor(), writes something after the end of
- * the current string, and finally needs to set the new length.
- *
- * Note: it is possible to use a negative increment in order to
- * right-trim the string.
- *
- * Usage example:
- *
- * Using sdsIncrLen() and sdsMakeRoomFor() it is possible to mount the
- * following schema, to cat bytes coming from the kernel to the end of an
- * sds string without copying into an intermediate buffer:
- *
- * oldlen = sdslen(s);
- * s = sdsMakeRoomFor(s, BUFFER_SIZE);
- * nread = read(fd, s+oldlen, BUFFER_SIZE);
- * ... check for nread <= 0 and handle it ...
- * sdsIncrLen(s, nread);
- */
 void sdsIncrLen(sds s, int incr) {
     unsigned char flags = s[-1];
     size_t len;
@@ -360,11 +281,6 @@ void sdsIncrLen(sds s, int incr) {
     s[len] = '\0';
 }
 
-/* Grow the sds to have the specified length. Bytes that were not part of
- * the original length of the sds will be set to zero.
- *
- * if the specified length is smaller than the current length, no operation
- * is performed. */
 sds sdsgrowzero(sds s, size_t len) {
     size_t curlen = sdslen(s);
 
@@ -378,11 +294,6 @@ sds sdsgrowzero(sds s, size_t len) {
     return s;
 }
 
-/* Append the specified binary-safe string pointed by 't' of 'len' bytes to the
- * end of the specified sds string 's'.
- *
- * After the call, the passed sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
 sds sdscatlen(sds s, const void *t, size_t len) {
     size_t curlen = sdslen(s);
 
@@ -394,24 +305,14 @@ sds sdscatlen(sds s, const void *t, size_t len) {
     return s;
 }
 
-/* Append the specified null termianted C string to the sds string 's'.
- *
- * After the call, the passed sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
 sds sdscat(sds s, const char *t) {
     return sdscatlen(s, t, strlen(t));
 }
 
-/* Append the specified sds 't' to the existing sds 's'.
- *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
 sds sdscatsds(sds s, const sds t) {
     return sdscatlen(s, t, sdslen(t));
 }
 
-/* Destructively modify the sds string 's' to hold the specified binary
- * safe string pointed by 't' of length 'len' bytes. */
 sds sdscpylen(sds s, const char *t, size_t len) {
     if (sdsalloc(s) < len) {
         s = sdsMakeRoomFor(s,len-sdslen(s));
@@ -423,8 +324,6 @@ sds sdscpylen(sds s, const char *t, size_t len) {
     return s;
 }
 
-/* Like sdscpylen() but 't' must be a null-termined string so that the length
- * of the string is obtained with strlen(). */
 sds sdscpy(sds s, const char *t) {
     return sdscpylen(s, t, strlen(t));
 }
@@ -496,10 +395,6 @@ int sdsull2str(char *s, unsigned long long v) {
     return l;
 }
 
-/* Create an sds string from a long long value. It is much faster than:
- *
- * sdscatprintf(sdsempty(),"%lld\n", value);
- */
 sds sdsfromlonglong(long long value) {
     char buf[SDS_LLSTR_SIZE];
     int len = sdsll2str(buf,value);
@@ -507,7 +402,6 @@ sds sdsfromlonglong(long long value) {
     return sdsnewlen(buf,len);
 }
 
-/* Like sdscatprintf() but gets va_list instead of being variadic. */
 sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     va_list cpy;
     char staticbuf[1024], *buf = staticbuf, *t;
@@ -545,22 +439,6 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     return t;
 }
 
-/* Append to the sds string 's' a string obtained using printf-alike format
- * specifier.
- *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call.
- *
- * Example:
- *
- * s = sdsnew("Sum is: ");
- * s = sdscatprintf(s,"%d+%d = %d",a,b,a+b).
- *
- * Often you need to create a string from scratch with the printf-alike
- * format. When this is the need, just use sdsempty() as the target string:
- *
- * s = sdscatprintf(sdsempty(), "... your format ...", args);
- */
 sds sdscatprintf(sds s, const char *fmt, ...) {
     va_list ap;
     char *t;
@@ -570,22 +448,6 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
     return t;
 }
 
-/* This function is similar to sdscatprintf, but much faster as it does
- * not rely on sprintf() family functions implemented by the libc that
- * are often very slow. Moreover directly handling the sds string as
- * new data is concatenated provides a performance improvement.
- *
- * However this function only handles an incompatible subset of printf-alike
- * format specifiers:
- *
- * %s - C String
- * %S - SDS string
- * %i - signed int
- * %I - 64 bit signed integer (long long, int64_t)
- * %u - unsigned int
- * %U - 64 bit unsigned integer (unsigned long long, uint64_t)
- * %% - Verbatim "%" character.
- */
 sds sdscatfmt(sds s, char const *fmt, ...) {
     size_t initlen = sdslen(s);
     const char *f = fmt;
@@ -676,20 +538,6 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
     return s;
 }
 
-/* Remove the part of the string from left and from right composed just of
- * contiguous characters found in 'cset', that is a null terminted C string.
- *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call.
- *
- * Example:
- *
- * s = sdsnew("AA...AA.a.aa.aHelloWorld     :::");
- * s = sdstrim(s,"Aa. :");
- * printf("%s\n", s);
- *
- * Output will be just "Hello World".
- */
 sds sdstrim(sds s, const char *cset) {
     char *start, *end, *sp, *ep;
     size_t len;
@@ -705,22 +553,6 @@ sds sdstrim(sds s, const char *cset) {
     return s;
 }
 
-/* Turn the string into a smaller (or equal) string containing only the
- * substring specified by the 'start' and 'end' indexes.
- *
- * start and end can be negative, where -1 means the last character of the
- * string, -2 the penultimate character, and so forth.
- *
- * The interval is inclusive, so the start and end characters will be part
- * of the resulting string.
- *
- * The string is modified in-place.
- *
- * Example:
- *
- * s = sdsnew("Hello World");
- * sdsrange(s,1,-1); => "ello World"
- */
 void sdsrange(sds s, int start, int end) {
     size_t newlen, len = sdslen(s);
 
@@ -749,31 +581,18 @@ void sdsrange(sds s, int start, int end) {
     sdssetlen(s,newlen);
 }
 
-/* Apply tolower() to every character of the sds string 's'. */
 void sdstolower(sds s) {
     int len = sdslen(s), j;
 
     for (j = 0; j < len; j++) s[j] = tolower(s[j]);
 }
 
-/* Apply toupper() to every character of the sds string 's'. */
 void sdstoupper(sds s) {
     int len = sdslen(s), j;
 
     for (j = 0; j < len; j++) s[j] = toupper(s[j]);
 }
 
-/* Compare two sds strings s1 and s2 with memcmp().
- *
- * Return value:
- *
- *     positive if s1 > s2.
- *     negative if s1 < s2.
- *     0 if s1 and s2 are exactly the same binary string.
- *
- * If two strings share exactly the same prefix, but one of the two has
- * additional characters, the longer string is considered to be greater than
- * the smaller one. */
 int sdscmp(const sds s1, const sds s2) {
     size_t l1, l2, minlen;
     int cmp;
@@ -786,22 +605,6 @@ int sdscmp(const sds s1, const sds s2) {
     return cmp;
 }
 
-/* Split 's' with separator in 'sep'. An array
- * of sds strings is returned. *count will be set
- * by reference to the number of tokens returned.
- *
- * On out of memory, zero length string, zero length
- * separator, NULL is returned.
- *
- * Note that 'sep' is able to split a string using
- * a multi-character separator. For example
- * sdssplit("foo_-_bar","_-_"); will return two
- * elements "foo" and "bar".
- *
- * This version of the function is binary-safe but
- * requires length arguments. sdssplit() is just the
- * same function but for zero-terminated strings.
- */
 sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count) {
     int elements = 0, slots = 5, start = 0, j;
     sds *tokens;
@@ -851,7 +654,6 @@ cleanup:
     }
 }
 
-/* Free the result returned by sdssplitlen(), or do nothing if 'tokens' is NULL. */
 void sdsfreesplitres(sds *tokens, int count) {
     if (!tokens) return;
     while(count--)
@@ -859,12 +661,6 @@ void sdsfreesplitres(sds *tokens, int count) {
     s_free(tokens);
 }
 
-/* Append to the sds string "s" an escaped string representation where
- * all the non-printable characters (tested with isprint()) are turned into
- * escapes in the form "\n\r\a...." or "\x<hex-number>".
- *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
 sds sdscatrepr(sds s, const char *p, size_t len) {
     s = sdscatlen(s,"\"",1);
     while(len--) {
@@ -921,25 +717,6 @@ int hex_digit_to_int(char c) {
     }
 }
 
-/* Split a line into arguments, where every argument can be in the
- * following programming-language REPL-alike form:
- *
- * foo bar "newline are supported\n" and "\xff\x00otherstuff"
- *
- * The number of arguments is stored into *argc, and an array
- * of sds is returned.
- *
- * The caller should free the resulting array of sds strings with
- * sdsfreesplitres().
- *
- * Note that sdscatrepr() is able to convert back a string into
- * a quoted string in the same format sdssplitargs() is able to parse.
- *
- * The function returns the allocated tokens on success, even when the
- * input string is empty, or NULL if the input contains unbalanced
- * quotes or closed quotes followed by non space characters
- * as in: "foo"bar or "foo'
- */
 sds *sdssplitargs(const char *line, int *argc) {
     const char *p = line;
     char *current = NULL;
@@ -1050,15 +827,6 @@ err:
     return NULL;
 }
 
-/* Modify the string substituting all the occurrences of the set of
- * characters specified in the 'from' string to the corresponding character
- * in the 'to' array.
- *
- * For instance: sdsmapchars(mystring, "ho", "01", 2)
- * will have the effect of turning the string "hello" into "0ell1".
- *
- * The function returns the sds string pointer, that is always the same
- * as the input pointer since no resize is needed. */
 sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen) {
     size_t j, i, l = sdslen(s);
 
@@ -1073,8 +841,6 @@ sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen) {
     return s;
 }
 
-/* Join an array of C strings using the specified separator (also a C string).
- * Returns the result as an sds string. */
 sds sdsjoin(char **argv, int argc, char *sep) {
     sds join = sdsempty();
     int j;
@@ -1086,7 +852,6 @@ sds sdsjoin(char **argv, int argc, char *sep) {
     return join;
 }
 
-/* Like sdsjoin, but joins an array of SDS strings. */
 sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen) {
     sds join = sdsempty();
     int j;
