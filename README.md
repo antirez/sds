@@ -228,11 +228,11 @@ Destroying strings
 void sdsfree(sds s);
 ```
 
-The destroy an SDS string there is just to call `sdsfree` with the string
+To destroy an SDS string, you just need to call `sdsfree` with the string
 pointer. Note that even empty strings created with `sdsempty` need to be
 destroyed as well otherwise they'll result into a memory leak.
 
-The function `sdsfree` does not perform any operation if instead of an SDS
+The function `sdsfree` does not perform any operation if, instead of an SDS
 string pointer, `NULL` is passed, so you don't need to check for `NULL` explicitly before calling it:
 
 ```c
@@ -244,7 +244,7 @@ Concatenating strings
 ---
 
 Concatenating strings to other strings is likely the operation you will end
-using the most with a dynamic C string library. SDS provides different
+up using the most with a dynamic C string library. SDS provides different
 functions to concatenate strings to existing strings.
 
 ```c
@@ -252,8 +252,8 @@ sds sdscatlen(sds s, const void *t, size_t len);
 sds sdscat(sds s, const char *t);
 ```
 
-The main string concatenation functions are `sdscatlen` and `sdscat` that are
-identical, the only difference being that `sdscat` does not have an explicit
+The main string concatenation functions are `sdscatlen` and `sdscat`. These are
+near-identical, the only difference being that `sdscat` does not have an explicit
 length argument since it expects a null terminated string.
 
 ```c
@@ -345,7 +345,7 @@ int some_integer = 100;
 sds num = sdscatprintf(sdsempty(),"%d\n", some_integer);
 ```
 
-However this is slow and we have a special function to make it efficient.
+However, this is slow and we have a special function to make it efficient.
 
 Fast number to string operations
 ---
