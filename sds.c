@@ -378,6 +378,25 @@ sds sdsgrowzero(sds s, size_t len) {
     return s;
 }
 
+/* Get input from stdin with MAX_INPUT_BUFFER_SIZE value
+ * which can be changed by the user. */
+sds sdsscanf() {
+#ifndef MAX_INPUT_BUFFER_SIZE
+#define MAX_INPUT_BUFFER_SIZE 100
+#endif
+    char* temp = sds_malloc(MAX_INPUT_BUFFER_SIZE);
+    fgets(temp, MAX_INPUT_BUFFER_SIZE, stdin);
+    sds to_return = NULL;
+    if(temp[0] != '\n') {
+        temp = strtok(temp, "\n");
+        to_return = sdsnewlen(temp, strlen(temp));
+    }
+    else
+        to_return = sdsempty();
+    free(temp);
+    return to_return;
+}
+
 /* Append the specified binary-safe string pointed by 't' of 'len' bytes to the
  * end of the specified sds string 's'.
  *
