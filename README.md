@@ -200,6 +200,8 @@ type. You can use the right `printf` specifier instead of casting.
     printf(string);
 
     input> Hello, World!
+
+    output> Hello, World!
     ```
 
 Obtaining the string length
