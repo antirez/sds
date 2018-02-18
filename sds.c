@@ -380,7 +380,7 @@ sds sdsgrowzero(sds s, size_t len) {
 
 /* Get input from stdin with MAX_INPUT_BUFFER_SIZE value
  * which can be changed by the user. */
-sds sdsscanf() {
+sds sdsscan() {
 #ifndef MAX_INPUT_BUFFER_SIZE
 #define MAX_INPUT_BUFFER_SIZE 100
 #endif
