@@ -85,54 +85,54 @@ int sdsTest(void) {
 
         sdsfree(x);
         x = sdsnew(" x ");
-        sdstrim(x," x");
+        x = sdstrim(x," x");
         test_cond("sdstrim() works when all chars match",
             sdslen(x) == 0)
 
         sdsfree(x);
         x = sdsnew(" x ");
-        sdstrim(x," ");
+        x = sdstrim(x," ");
         test_cond("sdstrim() works when a single char remains",
             sdslen(x) == 1 && x[0] == 'x')
 
         sdsfree(x);
         x = sdsnew("xxciaoyyy");
-        sdstrim(x,"xy");
+        x = sdstrim(x,"xy");
         test_cond("sdstrim() correctly trims characters",
             sdslen(x) == 4 && memcmp(x,"ciao\0",5) == 0)
 
         y = sdsdup(x);
-        sdsrange(y,1,1);
+        y = sdsrange(y,1,1);
         test_cond("sdsrange(...,1,1)",
             sdslen(y) == 1 && memcmp(y,"i\0",2) == 0)
 
         sdsfree(y);
         y = sdsdup(x);
-        sdsrange(y,1,-1);
+        y = sdsrange(y,1,-1);
         test_cond("sdsrange(...,1,-1)",
             sdslen(y) == 3 && memcmp(y,"iao\0",4) == 0)
 
         sdsfree(y);
         y = sdsdup(x);
-        sdsrange(y,-2,-1);
+        y = sdsrange(y,-2,-1);
         test_cond("sdsrange(...,-2,-1)",
             sdslen(y) == 2 && memcmp(y,"ao\0",3) == 0)
 
         sdsfree(y);
         y = sdsdup(x);
-        sdsrange(y,2,1);
+        y = sdsrange(y,2,1);
         test_cond("sdsrange(...,2,1)",
             sdslen(y) == 0 && memcmp(y,"\0",1) == 0)
 
         sdsfree(y);
         y = sdsdup(x);
-        sdsrange(y,1,100);
+        y = sdsrange(y,1,100);
         test_cond("sdsrange(...,1,100)",
             sdslen(y) == 3 && memcmp(y,"iao\0",4) == 0)
 
         sdsfree(y);
         y = sdsdup(x);
-        sdsrange(y,100,100);
+        y = sdsrange(y,100,100);
         test_cond("sdsrange(...,100,100)",
             sdslen(y) == 0 && memcmp(y,"\0",1) == 0)
 
