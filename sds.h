@@ -34,9 +34,9 @@
 #define __SDS_H
 
 #define SDS_MAX_PREALLOC (1024*1024)
-const char *SDS_NOINIT;
+extern const char *SDS_NOINIT;
 
-#include <sys/types.h>
+#include <stddef.h>
 #include <stdarg.h>
 #include <stdint.h>
 
@@ -46,31 +46,31 @@ typedef char *sds;
  * However is here to document the layout of type 5 SDS strings. */
 struct __attribute__ ((__packed__)) sdshdr5 {
     unsigned char flags; /* 3 lsb of type, and 5 msb of string length */
-    char buf[];
+    /* char buf[]; */
 };
 struct __attribute__ ((__packed__)) sdshdr8 {
     uint8_t len; /* used */
     uint8_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
-    char buf[];
+    /* char buf[]; */
 };
 struct __attribute__ ((__packed__)) sdshdr16 {
     uint16_t len; /* used */
     uint16_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
-    char buf[];
+    /* char buf[]; */
 };
 struct __attribute__ ((__packed__)) sdshdr32 {
     uint32_t len; /* used */
     uint32_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
-    char buf[];
+    /* char buf[]; */
 };
 struct __attribute__ ((__packed__)) sdshdr64 {
     uint64_t len; /* used */
     uint64_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
-    char buf[];
+    /* char buf[]; */
 };
 
 #define SDS_TYPE_5  0
@@ -80,7 +80,7 @@ struct __attribute__ ((__packed__)) sdshdr64 {
 #define SDS_TYPE_64 4
 #define SDS_TYPE_MASK 7
 #define SDS_TYPE_BITS 3
-#define SDS_HDR_VAR(T,s) struct sdshdr##T *sh = (void*)((s)-(sizeof(struct sdshdr##T)));
+#define SDS_HDR_VAR(T,s) struct sdshdr##T *sh = (struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T)));
 #define SDS_HDR(T,s) ((struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T))))
 #define SDS_TYPE_5_LEN(f) ((f)>>SDS_TYPE_BITS)
 
@@ -237,11 +237,11 @@ sds sdscatprintf(sds s, const char *fmt, ...);
 
 sds sdscatfmt(sds s, char const *fmt, ...);
 sds sdstrim(sds s, const char *cset);
-void sdsrange(sds s, ssize_t start, ssize_t end);
+void sdsrange(sds s, ptrdiff_t start, ptrdiff_t end);
 void sdsupdatelen(sds s);
 void sdsclear(sds s);
 int sdscmp(const sds s1, const sds s2);
-sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count);
+sds *sdssplitlen(const char *s, ptrdiff_t len, const char *sep, int seplen, int *count);
 void sdsfreesplitres(sds *tokens, int count);
 void sdstolower(sds s);
 void sdstoupper(sds s);
@@ -254,7 +254,7 @@ sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen);
 
 /* Low level functions exposed to the user API */
 sds sdsMakeRoomFor(sds s, size_t addlen);
-void sdsIncrLen(sds s, ssize_t incr);
+void sdsIncrLen(sds s, ptrdiff_t incr);
 sds sdsRemoveFreeSpace(sds s);
 size_t sdsAllocSize(sds s);
 void *sdsAllocPtr(sds s);

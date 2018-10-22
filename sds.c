@@ -64,7 +64,7 @@ static inline char sdsReqType(size_t string_size) {
         return SDS_TYPE_8;
     if (string_size < 1<<16)
         return SDS_TYPE_16;
-#if (LONG_MAX == LLONG_MAX)
+#if (SIZE_MAX == LLONG_MAX)
     if (string_size < 1ll<<32)
         return SDS_TYPE_32;
     return SDS_TYPE_64;
@@ -326,7 +326,7 @@ void *sdsAllocPtr(sds s) {
  * ... check for nread <= 0 and handle it ...
  * sdsIncrLen(s, nread);
  */
-void sdsIncrLen(sds s, ssize_t incr) {
+void sdsIncrLen(sds s, ptrdiff_t incr) {
     unsigned char flags = s[-1];
     size_t len;
     switch(flags&SDS_TYPE_MASK) {
@@ -524,7 +524,7 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     /* We try to start using a static buffer for speed.
      * If not possible we revert to heap allocation. */
     if (buflen > (int)sizeof(staticbuf)) {
-        buf = s_malloc(buflen);
+        buf = (char *)s_malloc(buflen);
         if (buf == NULL) return NULL;
     } else {
         buflen = sizeof(staticbuf);
@@ -736,7 +736,7 @@ sds sdstrim(sds s, const char *cset) {
  * s = sdsnew("Hello World");
  * sdsrange(s,1,-1); => "ello World"
  */
-void sdsrange(sds s, ssize_t start, ssize_t end) {
+void sdsrange(sds s, ptrdiff_t start, ptrdiff_t end) {
     size_t newlen, len = sdslen(s);
 
     if (len == 0) return;
@@ -750,9 +750,9 @@ void sdsrange(sds s, ssize_t start, ssize_t end) {
     }
     newlen = (start > end) ? 0 : (end-start)+1;
     if (newlen != 0) {
-        if (start >= (ssize_t)len) {
+        if (start >= (ptrdiff_t)len) {
             newlen = 0;
-        } else if (end >= (ssize_t)len) {
+        } else if (end >= (ptrdiff_t)len) {
             end = len-1;
             newlen = (start > end) ? 0 : (end-start)+1;
         }
@@ -817,14 +817,14 @@ int sdscmp(const sds s1, const sds s2) {
  * requires length arguments. sdssplit() is just the
  * same function but for zero-terminated strings.
  */
-sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count) {
+sds *sdssplitlen(const char *s, ptrdiff_t len, const char *sep, int seplen, int *count) {
     int elements = 0, slots = 5;
     long start = 0, j;
     sds *tokens;
 
     if (seplen < 1 || len < 0) return NULL;
 
-    tokens = s_malloc(sizeof(sds)*slots);
+    tokens = (sds *)s_malloc(sizeof(sds)*slots);
     if (tokens == NULL) return NULL;
 
     if (len == 0) {
@@ -837,7 +837,7 @@ sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *c
             sds *newtokens;
 
             slots *= 2;
-            newtokens = s_realloc(tokens,sizeof(sds)*slots);
+            newtokens = (sds *)s_realloc(tokens,sizeof(sds)*slots);
             if (newtokens == NULL) goto cleanup;
             tokens = newtokens;
         }
@@ -1046,13 +1046,13 @@ sds *sdssplitargs(const char *line, int *argc) {
                 if (*p) p++;
             }
             /* add the token to the vector */
-            vector = s_realloc(vector,((*argc)+1)*sizeof(char*));
+            vector = (char **)s_realloc(vector,((*argc)+1)*sizeof(char *));
             vector[*argc] = current;
             (*argc)++;
             current = NULL;
         } else {
             /* Even on empty input string return something not NULL. */
-            if (vector == NULL) vector = s_malloc(sizeof(void*));
+            if (vector == NULL) vector = (char **)s_malloc(sizeof(char *));
             return vector;
         }
     }
