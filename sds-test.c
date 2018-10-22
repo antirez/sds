@@ -176,12 +176,9 @@ int sdsTest(void) {
             for (i = 0; i < 10; i++) {
                 size_t oldlen = sdslen(x);
                 x = sdsMakeRoomFor(x,step);
-                int type = x[-1]&SDS_TYPE_MASK;
 
                 test_cond("sdsMakeRoomFor() len", sdslen(x) == oldlen);
-                if (type != SDS_TYPE_5) {
-                    test_cond("sdsMakeRoomFor() free", sdsavail(x) >= step);
-                }
+                test_cond("sdsMakeRoomFor() free", sdsavail(x) >= step);
                 p = x+oldlen;
                 for (j = 0; j < step; j++) {
                     p[j] = 'A'+j;
