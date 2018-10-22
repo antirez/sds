@@ -518,11 +518,12 @@ sds sdsfromlonglong(long long value) {
 sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     va_list cpy;
     char staticbuf[1024], *buf = staticbuf, *t;
-    size_t buflen = strlen(fmt)*2;
+    int buflen = strlen(fmt)*2;
+    int len;
 
     /* We try to start using a static buffer for speed.
      * If not possible we revert to heap allocation. */
-    if (buflen > sizeof(staticbuf)) {
+    if (buflen > (int)sizeof(staticbuf)) {
         buf = s_malloc(buflen);
         if (buf == NULL) return NULL;
     } else {
@@ -532,14 +533,21 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     /* Try with buffers two times bigger every time we fail to
      * fit the string in the current buffer size. */
     while(1) {
-        buf[buflen-2] = '\0';
-        va_copy(cpy,ap);
-        vsnprintf(buf, buflen, fmt, cpy);
+        va_copy(cpy, ap);
+        len = vsnprintf(buf, buflen, fmt, cpy);
         va_end(cpy);
-        if (buf[buflen-2] != '\0') {
+
+        /* vsnprintf will either return the number of bytes needed to write
+         * the string or a negative on an error. If the return value is
+         * greater or equal to buflen, that means we need to realloc and try
+         * again. */
+        if (len < 0) {
             if (buf != staticbuf) s_free(buf);
-            buflen *= 2;
-            buf = s_malloc(buflen);
+            return NULL;
+        } else if (len >= buflen) {
+            if (buf != staticbuf) s_free(buf);
+            buflen = len + 1;
+            buf = (char *)s_malloc(buflen);
             if (buf == NULL) return NULL;
             continue;
         }
@@ -547,7 +555,7 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     }
 
     /* Finally concat the obtained string to the SDS string and return it. */
-    t = sdscat(s, buf);
+    t = sdscatlen(s, buf, len);
     if (buf != staticbuf) s_free(buf);
     return t;
 }
