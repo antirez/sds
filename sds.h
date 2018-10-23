@@ -44,15 +44,15 @@
 #  define SDS_MUT_FUNC __attribute__((__warn_unused_result__, __nonnull__(1)))
   /* The same, but instead of warning on unused, it hints to the compiler
    * that this function returns a unique pointer. */
-#  define SDS_INIT_FUNC __attribute__((__warn_unused_result__, __malloc__))
+#  define SDS_INIT_FUNC __extension__ __attribute__((__warn_unused_result__, __malloc__))
   /* An SDS function that doesn't modify the string. */
-#  define SDS_CONST_FUNC __attribute__((__nonnull__(1), __pure__))
-#  define SDS_PRINTF_FUNC(fmt,args) __attribute((                            \
+#  define SDS_CONST_FUNC __extension__ __attribute__((__nonnull__(1), __pure__))
+#  define SDS_PRINTF_FUNC(fmt,args) __extension__ __attribute((                            \
     __nonnull__(1), __warn_unused_result__, __format__(printf, fmt, args)))
 #  define SDS_FMT_STR
   /* Flags to signal that this is a likely or unlikely condition. */
-#  define SDS_LIKELY(x) __builtin_expect(!!(x), 1)
-#  define SDS_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#  define SDS_LIKELY(x) __extension__ __builtin_expect(!!(x), 1)
+#  define SDS_UNLIKELY(x) __extension__ __builtin_expect(!!(x), 0)
 #else /* MSVC */
 #  if defined(_MSVC_VER) && (_MSVC_VER >= 1700)
 #    include <sal.h>
@@ -69,6 +69,17 @@
 #  define SDS_CONST_FUNC
 #  define SDS_LIKELY(x) (x)
 #  define SDS_UNLIKELY(x) (x)
+#endif
+
+/* restrict keyword */
+#ifndef s_restrict
+#  if defined(restrict) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+#    define s_restrict restrict
+#  elif defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#    define s_restrict __restrict__
+#  else
+#    define s_restrict
+#  endif
 #endif
 
 #define SDS_MAX_PREALLOC (1024*1024)
@@ -90,6 +101,8 @@ SDS_HDR_STRUCT(8)
 SDS_HDR_STRUCT(16)
 SDS_HDR_STRUCT(32)
 SDS_HDR_STRUCT(64)
+
+#undef SDS_HDR_STRUCT
 
 #define SDS_TYPE_8  0
 #define SDS_TYPE_16 1
@@ -215,40 +228,40 @@ retry:
 /* The sds version of strcmp */
 SDS_CONST_FUNC int sdscmp(const sds s1, const sds s2);
 
-SDS_INIT_FUNC sds sdsnewlen(const void *init, size_t initlen);
-SDS_INIT_FUNC sds sdsnew(const char *init);
+SDS_INIT_FUNC sds sdsnewlen(const void *s_restrict init, size_t initlen);
+SDS_INIT_FUNC sds sdsnew(const char *s_restrict init);
 SDS_INIT_FUNC sds sdsempty(void);
-SDS_INIT_FUNC sds sdsdup(const sds s);
+SDS_INIT_FUNC sds sdsdup(const sds s_restrict s);
 void sdsfree(sds s);
 
-SDS_MUT_FUNC sds sdsgrowzero(sds s, size_t len);
-SDS_MUT_FUNC sds sdscatlen(sds s, const void *t, size_t len);
-SDS_MUT_FUNC sds sdscat(sds s, const char *t);
-SDS_MUT_FUNC sds sdscatsds(sds s, const sds t);
-SDS_MUT_FUNC sds sdscpylen(sds s, const char *t, size_t len);
-SDS_MUT_FUNC sds sdscpy(sds s, const char *t);
+SDS_MUT_FUNC sds sdsgrowzero(sds s_restrict s, size_t len);
+SDS_MUT_FUNC sds sdscatlen(sds s_restrict s, const void *s_restrict t, size_t len);
+SDS_MUT_FUNC sds sdscat(sds s_restrict s, const char *s_restrict t);
+SDS_MUT_FUNC sds sdscatsds(sds s_restrict s, const sds s_restrict t);
+SDS_MUT_FUNC sds sdscpylen(sds s_restrict s, const char *s_restrict t, size_t len);
+SDS_MUT_FUNC sds sdscpy(sds s_restrict s, const char *s_restrict t);
 
-SDS_PRINTF_FUNC(2,0) sds sdscatvprintf(sds s, SDS_FMT_STR const char *fmt,
+SDS_PRINTF_FUNC(2,0) sds sdscatvprintf(sds s_restrict s, SDS_FMT_STR const char *s_restrict fmt,
                                        va_list ap);
-SDS_PRINTF_FUNC(2,3) sds sdscatprintf(sds s, SDS_FMT_STR const char *fmt, ...);
+SDS_PRINTF_FUNC(2,3) sds sdscatprintf(sds s_restrict s, SDS_FMT_STR const char *s_restrict fmt, ...);
 
-SDS_MUT_FUNC sds sdscatfmt(sds s, const char *fmt, ...);
+SDS_MUT_FUNC sds sdscatfmt(sds s_restrict s, const char *s_restrict fmt, ...);
 
-SDS_MUT_FUNC sds sdstrim(sds s, const char *cset);
+SDS_MUT_FUNC sds sdstrim(sds s_restrict s, const char *s_restrict cset);
 SDS_MUT_FUNC sds sdsrange(sds s, ptrdiff_t start, ptrdiff_t end);
 SDS_MUT_FUNC sds sdsupdatelen(sds s);
 SDS_MUT_FUNC sds sdsclear(sds s);
 
-SDS_INIT_FUNC sds *sdssplitlen(const char *s, ptrdiff_t len, const char *sep, int seplen, int *count);
+SDS_INIT_FUNC sds *sdssplitlen(const char *s_restrict s, ptrdiff_t len, const char *s_restrict sep, int seplen, int *count);
 void sdsfreesplitres(sds *tokens, int count);
 SDS_MUT_FUNC sds sdstolower(sds s);
 SDS_MUT_FUNC sds sdstoupper(sds s);
 SDS_INIT_FUNC sds sdsfromlonglong(long long value);
-SDS_MUT_FUNC sds sdscatrepr(sds s, const char *p, size_t len);
-SDS_INIT_FUNC sds *sdssplitargs(const char *line, int *argc);
-SDS_MUT_FUNC sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen);
-SDS_MUT_FUNC sds sdsjoin(char **argv, int argc, char *sep);
-SDS_MUT_FUNC sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen);
+SDS_MUT_FUNC sds sdscatrepr(sds s_restrict s, const char *s_restrict p, size_t len);
+SDS_INIT_FUNC sds *sdssplitargs(const char *s_restrict line, int *s_restrict argc);
+SDS_MUT_FUNC sds sdsmapchars(sds s_restrict s, const char *s_restrict from, const char *s_restrict to, size_t setlen);
+SDS_MUT_FUNC sds sdsjoin(const char **s_restrict argv, int argc, const char *s_restrict sep);
+SDS_MUT_FUNC sds sdsjoinsds(sds *s_restrict argv, int argc, const char *s_restrict sep, size_t seplen);
 
 /* Export the allocator used by SDS to the program using SDS.
  * Sometimes the program SDS is linked to, may use a different set of
