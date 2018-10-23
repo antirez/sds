@@ -82,6 +82,32 @@
 #  endif
 #endif
 
+/* If you define SDS_ABORT_ON_ERROR, instead of the sds functions returning
+ * NULL, it will print a message and abort. */
+#ifdef SDS_ABORT_ON_ERROR
+#  define SDS_UNREACHABLE(...)                                          \
+    do {                                                                \
+        fprintf(stderr, "%s:%d: sds reached unreachable code!\n"        \
+                        "Aborting because of SDS_ABORT_ON_ERROR.\n",    \
+                __FILE__, __LINE__);                                    \
+        abort();                                                        \
+    } while (0)
+#  define SDS_ERR_RETURN(...)                                           \
+    do {                                                                \
+        fprintf(stderr, "%s:%d: sds encountered an error!\n"            \
+                        "Aborting because of SDS_ABORT_ON_ERROR.\n",    \
+                __FILE__, __LINE__);                                    \
+        abort();                                                        \
+    } while (0)
+#else
+#  if defined(__GNUC__) || defined(__clang__)
+#    define SDS_UNREACHABLE(...) __builtin_unreachable(); return __VA_ARGS__
+#  else
+#    define SDS_UNREACHABLE(...) return __VA_ARGS__
+#  endif
+#  define SDS_ERR_RETURN(...) return __VA_ARGS__
+#endif
+
 #define SDS_MAX_PREALLOC (1024*1024)
 extern const char *SDS_NOINIT;
 
@@ -133,35 +159,36 @@ SDS_HDR_STRUCT(64)
  *   sds_hdr_int: Same as above, but signed. */
 #define SDS_HDR_CASE(T, s, ...)                                     \
     case SDS_TYPE_##T: {                                            \
+        sds _s = (s); /* prevent null arithmetic warnings */        \
         typedef struct sdshdr##T sdshdr;                            \
         {   /* C90 needs a block here */                            \
             sdshdr *sh = NULL;                                      \
-            if ((s) != NULL)                                        \
-                sh = SDS_HDR(T,s);                                  \
+            if (_s != NULL)                                         \
+                sh = SDS_HDR(T,_s);                                 \
             SDS_NO_TYPEDEF_WARNINGS                                 \
             typedef uint##T##_t sdshdr_uint;                        \
             typedef int##T##_t sdshdr_int;                          \
-            do { __VA_ARGS__; } while (0);                          \
+            { __VA_ARGS__; }                                        \
             SDS_RESET_WARNINGS                                      \
         }                                                           \
     }                                                               \
     break
 
 /* Automatically generates the code block for each sds type. */
-#define SDS_HDR_LAMBDA(s, ...) do {                                 \
+#define SDS_HDR_LAMBDA(s, ...) {                                    \
     const unsigned char _flags = (s)[-1];                           \
     SDS_HDR_LAMBDA_2(s, (_flags) & SDS_TYPE_MASK, __VA_ARGS__);     \
-} while (0)
+}
 
 /* Same as above, but takes a precalculated type option. */
-#define SDS_HDR_LAMBDA_2(s, _type, ...) do {                        \
+#define SDS_HDR_LAMBDA_2(s, _type, ...) {                           \
     switch ((_type)) {                                              \
         SDS_HDR_CASE(8, (s), __VA_ARGS__);                          \
         SDS_HDR_CASE(16, (s), __VA_ARGS__);                         \
         SDS_HDR_CASE(32, (s), __VA_ARGS__);                         \
         SDS_HDR_CASE(64, (s), __VA_ARGS__);                         \
     }                                                               \
-} while (0)
+}
 
 
 /* Low level functions exposed to the user API */
@@ -176,54 +203,63 @@ SDS_CONST_FUNC void *sdsAllocPtr(sds s);
 /* Length of an sds string. Use it like strlen. */
 SDS_CONST_FUNC static inline size_t sdslen(const sds s) {
     SDS_HDR_LAMBDA(s, { return sh->len; });
-    return 0;
+    SDS_UNREACHABLE(0);
 }
 /* Available space on an sds string */
 SDS_CONST_FUNC static inline size_t sdsavail(const sds s) {
     SDS_HDR_LAMBDA(s, { return sh->alloc - sh->len; });
-    return 0;
+    SDS_UNREACHABLE(0);
 }
 /* sdsalloc() = sdsavail() + sdslen() */
 SDS_CONST_FUNC static inline size_t sdsalloc(const sds s) {
     SDS_HDR_LAMBDA(s, { return sh->alloc; });
-    return 0;
+    SDS_UNREACHABLE(0);
 }
 
 /* Breaking changes: These now may reallocate and return themselves.*/
 SDS_MUT_FUNC static inline sds sdssetlen(sds s, size_t newlen) {
-retry:
-    SDS_HDR_LAMBDA(s, {
-        /* Check if we need space */
-        if (SDS_UNLIKELY(sh->alloc < newlen + 1)) {
-            s = sdsMakeRoomFor(s, newlen + 1);
-            goto retry;
-        }
-        sh->len = newlen;
-    });
-    return s;
+    int i;
+    for (i = 0; i < 2; ++i) {
+        SDS_HDR_LAMBDA(s, {
+            /* Check if we need space */
+            if (SDS_UNLIKELY(sh->alloc < newlen + 1)) {
+                s = sdsMakeRoomFor(s, newlen + 1);
+                continue;
+            }
+            sh->len = newlen;
+            return s;
+        });
+    }
+    SDS_UNREACHABLE(NULL);
 }
 SDS_MUT_FUNC static inline sds sdsinclen(sds s, size_t inc) {
-retry:
-    SDS_HDR_LAMBDA(s, {
-        /* Check if we need space */
-        if (SDS_UNLIKELY(sh->alloc < sh->len + inc + 1)) {
-            s = sdsMakeRoomFor(s, sh->len + inc + 1);
-            goto retry;
-        }
-        sh->len += inc;
-    });
-    return s;
+    int i;
+    for (i = 0; i < 2; ++i) {
+        SDS_HDR_LAMBDA(s, {
+            /* Check if we need space */
+            if (SDS_UNLIKELY(sh->alloc < sh->len + inc + 1)) {
+                s = sdsMakeRoomFor(s, sh->len + inc + 1);
+                continue;
+            }
+            sh->len += inc;
+            return s;
+        });
+    }
+    SDS_UNREACHABLE(NULL);
 }
 SDS_MUT_FUNC static inline sds sdssetalloc(sds s, size_t newlen) {
-retry:
-    SDS_HDR_LAMBDA(s, {
-        if (SDS_UNLIKELY(newlen > (sdshdr_uint)-1)) {
-            s = sdsMakeRoomFor(s, newlen);
-            goto retry;
-        }
-        sh->alloc = newlen;
-    });
-    return s;
+    int i;
+    for (i = 0; i < 2; ++i) {
+        SDS_HDR_LAMBDA(s, {
+            if (SDS_UNLIKELY(newlen > (sdshdr_uint)-1)) {
+                s = sdsMakeRoomFor(s, newlen);
+                continue;
+            }
+            sh->alloc = newlen;
+            return s;
+        });
+    }
+    SDS_UNREACHABLE(NULL);
 }
 /* The sds version of strcmp */
 SDS_CONST_FUNC int sdscmp(const sds s1, const sds s2);
@@ -256,7 +292,36 @@ SDS_INIT_FUNC sds *sdssplitlen(const char *s_restrict s, ptrdiff_t len, const ch
 void sdsfreesplitres(sds *tokens, int count);
 SDS_MUT_FUNC sds sdstolower(sds s);
 SDS_MUT_FUNC sds sdstoupper(sds s);
+
+/* Appends a single character to an sds string. */
+SDS_MUT_FUNC static inline sds sdsaddchar(sds s, unsigned int c) {
+    size_t len, i;
+
+    for (i = 0; i < 2; ++i) {
+        SDS_HDR_LAMBDA(s, {
+            len = sh->len;
+            if (sh->alloc - len < 1) {
+                s = sdsMakeRoomFor(s, 2);
+                continue;
+            }
+            sh->len++;
+        });
+	    s[len] = (char)c;
+        s[len + 1] = '\0';
+        return s;
+    }
+    SDS_UNREACHABLE(NULL);
+}
+SDS_MUT_FUNC sds sdsaddint(sds s, int value);
+SDS_MUT_FUNC sds sdsadduint(sds s, unsigned int value);
+SDS_MUT_FUNC sds sdsaddlonglong(sds s, long long value);
+SDS_MUT_FUNC sds sdsaddulonglong(sds s, unsigned long long value);
+
+SDS_INIT_FUNC sds sdsfromint(int value);
+SDS_INIT_FUNC sds sdsfromuint(unsigned int value);
 SDS_INIT_FUNC sds sdsfromlonglong(long long value);
+SDS_INIT_FUNC sds sdsfromulonglong(unsigned long long value);
+
 SDS_MUT_FUNC sds sdscatrepr(sds s_restrict s, const char *s_restrict p, size_t len);
 SDS_INIT_FUNC sds *sdssplitargs(const char *s_restrict line, int *s_restrict argc);
 SDS_MUT_FUNC sds sdsmapchars(sds s_restrict s, const char *s_restrict from, const char *s_restrict to, size_t setlen);
