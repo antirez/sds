@@ -76,7 +76,7 @@ _sds_hdr_lambda_retry: if (0) {                                     \
         goto _sds_hdr_lambda_retry;                                 \
     } {                                                             \
         const unsigned char _flags = (s)[-1];                       \
-        SDS_HDR_LAMBDA_2(s, (_flags) & SDS_TYPE_MASK, __VA_ARGS__); \
+        SDS_HDR_LAMBDA_2(s, (_flags), __VA_ARGS__); \
     }                                                               \
 }
 
@@ -99,7 +99,7 @@ _sds_hdr_lambda_retry: if (0) {                                     \
 
 /* Same as above, but takes a precalculated type option. */
 #define SDS_HDR_LAMBDA_2(s, _type, ...) {                           \
-    switch ((_type)) {                                              \
+    switch ((_type) & SDS_TYPE_MASK) {                                              \
         SDS_HDR_CASE(8, (s), __VA_ARGS__);                          \
         SDS_HDR_CASE(16, (s), __VA_ARGS__);                         \
         SDS_HDR_CASE(32, (s), __VA_ARGS__);                         \

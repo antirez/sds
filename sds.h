@@ -78,18 +78,6 @@ extern "C" {
 #  define SDS_UNLIKELY(x) (x)
 #endif
 
-#ifndef SDS_32_BIT
-#  if UINT32_MAX == UINTPTR_MAX
-#    define SDS_32_BIT
-#  endif
-#endif
-
-#ifdef SDS_32_BIT
-#  define SDS_64_BIT_ONLY(...)
-#else
-#  define SDS_64_BIT_ONLY(...) __VA_ARGS__
-#endif
-
 /* restrict keyword */
 #ifndef s_restrict
 #  if defined(restrict) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
@@ -162,6 +150,20 @@ SDS_HDR_STRUCT(64)
 
 #undef SDS_HDR_STRUCT
 
+#ifndef SDS_32_BIT
+#  if UINT32_MAX == UINTPTR_MAX
+#    define SDS_32_BIT
+#  endif
+#endif
+
+#ifdef SDS_32_BIT
+#  define SDS_64_BIT_ONLY(...)
+#  define SDS_TYPE_MASK 2
+#else
+#  define SDS_64_BIT_ONLY(...) __VA_ARGS__
+#  define SDS_TYPE_MASK 3
+#endif
+
 enum sdshdrtype {
     SDS_TYPE_8,
     SDS_TYPE_16,
@@ -169,7 +171,6 @@ enum sdshdrtype {
     SDS_TYPE_64
 };
 
-#define SDS_TYPE_MASK 3
 #define SDS_TYPE_BITS 2
 #define SDS_HDR_VAR(T,s) struct sdshdr##T *sh = (struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T) + 1));
 #define SDS_HDR(T,s) ((struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T) + 1)))
@@ -353,15 +354,7 @@ SDS_INIT_FUNC static inline sds sdsfromstdstr(const std::string &s_restrict x) {
 #  elif defined(__cplusplus) && __cplusplus >= 201103L
 #    define SDSADD_TYPE 2 /* C++ overload/type_traits */
 #  elif !defined(__cplusplus) && (defined(__clang__) || defined(__GNUC__))
-     /* Clang 3.8+ supports sdsadd */
-#    if defined(__clang__)
-#      if (__clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 8)
-#        define SDSADD_TYPE 3
-#      else
-#        define SDSADD_TYPE 0
-#      endif
-     /* GCC 4.9+ support sdsadd */
-#    elif defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ == 9))
+#    if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 2)))
 #      define SDSADD_TYPE 3
 #    else
 #      define SDSADD_TYPE 0
@@ -476,18 +469,14 @@ extern sds sdsadd_bad_argument(sds);
     _SDS_IGNORE("-Wpointer-to-int-cast") _SDS_IGNORE("-Wint-conversion")
 
 #define _SDSADD_WARNINGS_ON _SDS_DIAG(pop)
-
-#define sdsadd(s, x) __extension__({                                        \
-    _SDSADD_WARNINGS_OFF                                                    \
-    sds _s = ({                                                             \
-        __auto_type _s2 =                                                   \
+#define _SDSADD_CHECK(s, x)                                                 \
+            (_SDS_TYPE_CMP((x), char, sdsaddchar((s), (unsigned)(x)),        \
             _SDS_TYPE_CMP((x), const char[],                                \
                 sdscatlen((s), (const char *)(x), sizeof(x)-1),             \
             _SDS_TYPE_CMP((x), char[],                                      \
                 sdscatlen((s), (const char *)(x), sizeof(x)-1),             \
             _SDS_TYPE_CMP((x), const char *, sdscat((s), (const char *)(x)),\
             _SDS_TYPE_CMP((x), char *, sdscat((s), (const char *)(x)),      \
-            _SDS_TYPE_CMP((x), char, sdsaddchar((s), (unsigned)(x)),        \
             _SDS_TYPE_CMP((x), int,                                         \
                  SDS_IS_CHAR(x) ? sdsaddchar((s), (unsigned)(x))            \
                                 : sdsaddint((s), (int)(x)),                 \
@@ -499,16 +488,17 @@ extern sds sdsadd_bad_argument(sds);
             _SDS_TYPE_CMP((x), unsigned long long,                          \
                 sdsaddulonglong((s), (unsigned long long)(x)),              \
             (int)1 /* to mess up the assertion below */                     \
-        )))))))));                                                          \
+        ))))))))))
+#define sdsadd(s, x) __extension__({                                        \
+    _SDSADD_WARNINGS_OFF                                                    \
         /* If an invalid option is used above, _s2 will be int and          \
          * sdsadd_invalid_type would expand to a negative array. */         \
-        extern char sdsadd_invalid_type[                                    \
-            (2 * !!__builtin_types_compatible_p(__typeof__(_s2), sds)) - 1  \
+    __attribute__((__unused__)) extern char sdsadd_invalid_type[                                    \
+            (2 * !!__builtin_types_compatible_p(                            \
+                __typeof__(_SDSADD_CHECK(s,x)), sds)) - 1  \
         ];                                                                  \
-        _s2;                                                                \
-    });                                                                     \
+    _SDSADD_CHECK(s, x);                                                                     \
     _SDSADD_WARNINGS_ON                                                     \
-    _s;                                                                     \
 })
 #else /* Not supported */
 #define sdsadd(s, x) do { char sdsadd_not_supported_in_this_compiler[-1]; } while (0)

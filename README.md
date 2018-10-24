@@ -312,7 +312,7 @@ Adding other items to strings (sdsadd)
 
 Adding other things to strings is also easy.
 
-If you have a supported compiler (C++11, C11, GCC 4.9+, Clang 3.8+), you don't
+If you have a supported compiler (C++11, C11, GCC 3.2+, Clang), you don't
 have to remember these functions. Instead, you can use the magic `sdsadd` macro:
 
 ```c
