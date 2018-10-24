@@ -33,9 +33,15 @@
 #ifndef __SDS_H
 #define __SDS_H
 
+#include <stdlib.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <string.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Define some helpful function attributes. */
 #if defined(__GNUC__) || defined(__clang__) /* GCC/Clang */
@@ -289,6 +295,9 @@ SDS_MUT_FUNC sds sdsupdatelen(sds s);
 SDS_MUT_FUNC sds sdsclear(sds s);
 
 SDS_INIT_FUNC sds *sdssplitlen(const char *s_restrict s, ptrdiff_t len, const char *s_restrict sep, int seplen, int *count);
+SDS_INIT_FUNC static inline sds *sdssplit(const char *s_restrict s, const char *s_restrict sep, int *count) {
+    return sdssplitlen(s, strlen(s), sep, strlen(sep), count);
+}
 void sdsfreesplitres(sds *tokens, int count);
 SDS_MUT_FUNC sds sdstolower(sds s);
 SDS_MUT_FUNC sds sdstoupper(sds s);
@@ -336,4 +345,151 @@ void *sds_malloc(size_t size);
 void *sds_realloc(void *ptr, size_t size);
 void sds_free(void *ptr);
 
+#ifdef __cplusplus
+}
+#endif
+
+/* basic std::string wrappers */
+#ifdef __cplusplus
+#include <string>
+SDS_MUT_FUNC static inline sds sdsaddstdstr(sds s_restrict s, const std::string &s_restrict x) {
+    return sdscatlen(s, x.c_str(), x.length());
+}
+static inline std::string sds2stdstr(const sds s) {
+    return std::string(s, sdslen(s));
+}
+SDS_INIT_FUNC static inline sds sdsfromstdstr(const std::string &s_restrict x) {
+    return sdsnewlen(x.c_str(), x.length());
+}
+#endif
+
+/* A hacky macro that detects most character literals. Wrap in parentheses to disable.
+ * What this does is stringify x and check if it starts or ends in a single quote.
+ *
+ * This lets us detect character literals even after promotion, which even the most
+ * complicated C++ template can't detect. */
+#define SDS_IS_CHAR(x) ((#x[0] == '\'') || (sizeof(#x) > 3 && #x[sizeof(#x) - 2] == '\''))
+
+#ifndef SDSADD_TYPE
+#  if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#    define SDSADD_TYPE 1 /* _Generic */
+#  elif defined(__cplusplus) && __cplusplus >= 201103L
+#    define SDSADD_TYPE 2 /* C++ overload/type_traits */
+#  elif !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+#    define SDSADD_TYPE 3 /* __builtin_types_compatible_p/__builtin_choose_expr */
+#  else
+#    define SDSADD_TYPE 0 /* not supported */
+#  endif
+#endif /* SDSADD_TYPE */
+
+/* Code for the special sdsadd macro. */
+#if SDSADD_TYPE == 1 /* _Generic */
+#define sdsadd(s, x)                                                        \
+    _Generic((x),                                                           \
+        char *: sdscat, const char *: sdscat,                               \
+        char: sdsaddchar,                                                   \
+        int: SDS_IS_CHAR(x) ? (sds (*)(sds, int))sdsaddchar : sdsaddint,    \
+        unsigned: SDS_IS_CHAR(x) ? sdsaddchar : sdsadduint,                 \
+        long long: sdsaddlonglong,                                          \
+        unsigned long long: sdsaddulonglong                                 \
+    )((s), (x))
+
+#elif SDSADD_TYPE == 2 /* C++ */
+/* We use overloads and type_traits for C++. */
+#include <type_traits>
+#include <limits.h>
+
+/* This struct is needed because switching overloads in a ternary
+ * isn't possible without specializations and casts, and C++ doesn't
+ * allow partial function specialization. What happens is that when
+ * SDS_IS_CHAR expands to 1, it will specialize to the one below
+ * that forces the char overload. */
+template <bool>
+struct _sdsadd_t_ {
+    /* just to make things cleaner */
+    template <typename T>
+    using base_type = typename std::decay<T>::type;
+
+    /* C++ allows arrays to be passed as parameter references, and if it can
+     * deduct its size, it can pass it as a template parameter, avoiding a strlen
+     * call. However, it is impossible to have priority over const char * without
+     * !std::is_array, because for some reason, const char * outprioritizes
+     * const char[4]. */
+    template <size_t N>
+    SDS_MUT_FUNC static inline sds _sdsadd(sds s_restrict s, const char (&s_restrict x)[N]) {
+        return sdscatlen(s, x, N - 1);
+    }
+    /* C string, with an unknown compile-time size. */
+    template <typename T,
+        typename std::enable_if<
+            std::is_convertible<base_type<T>, const char *>::value
+            && !std::is_array<T>::value /* Disables arrays to enable the above overload */
+        , int>::type = 0>
+    SDS_MUT_FUNC static inline sds _sdsadd(sds s_restrict s, const T x) {
+        return sdscat(s, x);
+    }
+    /* Catches all integers. */
+    template <typename T,
+        typename std::enable_if<
+            std::is_integral<base_type<T>>::value, int
+        >::type = 0>
+    SDS_MUT_FUNC static inline sds _sdsadd(sds s_restrict s, const T x) {
+        if (std::is_unsigned<base_type<T>>::value) {
+            if (x <= UINT_MAX)
+                return sdsadduint(s, static_cast<unsigned>(x));
+            else
+                return sdsaddulonglong(s, x);
+        } else {
+            if (x <= INT_MAX && x >= INT_MIN)
+                return sdsaddint(s, static_cast<unsigned>(x));
+            else
+                return sdsaddlonglong(s, x);
+        }
+    }
+    /* char. This has overload priority over the generic one. */
+    SDS_MUT_FUNC static inline sds _sdsadd(sds s_restrict s, const char x) {
+        return sdsaddchar(s, x);
+    }
+    /* std::string */
+    SDS_MUT_FUNC static inline sds _sdsadd(sds s_restrict s, const std::string &s_restrict x) {
+        return sdsaddstdstr(s, x);
+    }
+};
+
+/* If SDS_IS_CHAR(x) expands to true in the macro below, it will specialize
+ * _sdsadd_t_ to use this overload. */
+template <> struct _sdsadd_t_<true> {
+    SDS_MUT_FUNC static inline sds _sdsadd(sds s_restrict s, const unsigned x) {
+        return sdsaddchar(s, x);
+    }
+};
+
+#define sdsadd(s, x) _sdsadd_t_<SDS_IS_CHAR(x)>::_sdsadd((s), (x))
+
+#elif SDSADD_TYPE == 3 /* GCC extensions */
+
+extern sds sdsadd_bad_argument(sds, void *);
+
+/* To make things a little nicer. We still need the mess of parentheses though. */
+#define _SDS_TYPE_CMP(x,y, true_, false_)                                   \
+    __builtin_choose_expr(                                                  \
+        __builtin_types_compatible_p(__typeof__(x), y), true_, false_       \
+    )
+
+#define sdsadd(s, x) __extension__                                          \
+    _SDS_TYPE_CMP((x), const char[], sdscat,                                \
+    _SDS_TYPE_CMP((x), char[], sdscat,                                      \
+    _SDS_TYPE_CMP((x), const char *, sdscat,                                \
+    _SDS_TYPE_CMP((x), char *, sdscat,                                      \
+    _SDS_TYPE_CMP((x), char, sdsaddchar,                                    \
+    _SDS_TYPE_CMP((x), int,                                                 \
+         (SDS_IS_CHAR(x) ? (sds (*)(sds, int))sdsaddchar : sdsaddint),      \
+    _SDS_TYPE_CMP((x), unsigned,                                            \
+         (SDS_IS_CHAR(x) ? sdsaddchar : sdsadduint),                        \
+    _SDS_TYPE_CMP((x), long long, sdsaddlonglong,                           \
+    _SDS_TYPE_CMP((x), unsigned long long, sdsaddulonglong,                 \
+    sdsadd_bad_argument)))))))))((s), (x))
+#else /* Not supported */
+#define sdsadd(s, x) do { char sdsadd_not_supported_in_this_compiler[-1]; } while (0)
+#endif /* sdsadd macros */
 #endif
