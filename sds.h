@@ -38,6 +38,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <string.h>
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,6 +76,18 @@ extern "C" {
 #  define SDS_CONST_FUNC
 #  define SDS_LIKELY(x) (x)
 #  define SDS_UNLIKELY(x) (x)
+#endif
+
+#ifndef SDS_32_BIT
+#  if UINT32_MAX == UINTPTR_MAX
+#    define SDS_32_BIT
+#  endif
+#endif
+
+#ifdef SDS_32_BIT
+#  define SDS_64_BIT_ONLY(...)
+#else
+#  define SDS_64_BIT_ONLY(...) __VA_ARGS__
 #endif
 
 /* restrict keyword */
@@ -145,37 +158,31 @@ SDS_HDR_STRUCT(64)
 #define SDS_HDR_VAR(T,s) struct sdshdr##T *sh = (struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T) + 1));
 #define SDS_HDR(T,s) ((struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T) + 1)))
 
-/* This is used to silence "unused typedef" warnings for SDS_HDR_LAMBDA. */
-#if defined(__clang__)
-#define SDS_NO_TYPEDEF_WARNINGS _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wunused-local-typedef\"")
-#define SDS_RESET_WARNINGS _Pragma("clang diagnostic pop")
-#elif defined(__GNUC__)
-#define SDS_NO_TYPEDEF_WARNINGS _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wunused-local-typedefs\"")
-#define SDS_RESET_WARNINGS _Pragma("GCC diagnostic pop")
-#else
-#define SDS_NO_TYPEDEF_WARNINGS
-#define SDS_RESET_WARNINGS
-#endif
-
 /* Creates a single case statement for SDS_HDR_LAMBDA and SDS_HDR_LAMBDA_2.
  * It creates the following:
  *   sh: A pointer to the sds header struct.
- *   sds_hdr: A typedef of the sdshdr struct.
- *   sds_hdr_uint: The unsigned version of the header's int size.
- *   sds_hdr_int: Same as above, but signed. */
+ *   sdshdr: A typedef of the sdshdr struct.
+ *   sdshdr_uint: The unsigned version of the header's int size.
+ *   sdshdr_int: Same as above, but signed. */
 #define SDS_HDR_CASE(T, s, ...)                                     \
     case SDS_TYPE_##T: {                                            \
         sds _s = (s); /* prevent null arithmetic warnings */        \
         typedef struct sdshdr##T sdshdr;                            \
+        typedef uint##T##_t sdshdr_uint;                            \
+        typedef int##T##_t sdshdr_int;                              \
         {   /* C90 needs a block here */                            \
             sdshdr *sh = NULL;                                      \
+            /* Avoid unused variable/typedef warnings which are */  \
+            /* bugged and can't be silenced with pragmas in gcc. */ \
+            extern sdshdr_uint _sds_uint##T;                        \
+            extern sdshdr_int _sds_int##T;                          \
+            (void)_sds_uint##T;                                     \
+            (void)_sds_int##T;                                      \
+            (void)sh;                                               \
+            /* Only set sh if s is not NULL */                      \
             if (_s != NULL)                                         \
                 sh = SDS_HDR(T,_s);                                 \
-            SDS_NO_TYPEDEF_WARNINGS                                 \
-            typedef uint##T##_t sdshdr_uint;                        \
-            typedef int##T##_t sdshdr_int;                          \
             { __VA_ARGS__; }                                        \
-            SDS_RESET_WARNINGS                                      \
         }                                                           \
     }                                                               \
     break
@@ -192,7 +199,7 @@ SDS_HDR_STRUCT(64)
         SDS_HDR_CASE(8, (s), __VA_ARGS__);                          \
         SDS_HDR_CASE(16, (s), __VA_ARGS__);                         \
         SDS_HDR_CASE(32, (s), __VA_ARGS__);                         \
-        SDS_HDR_CASE(64, (s), __VA_ARGS__);                         \
+        SDS_64_BIT_ONLY(SDS_HDR_CASE(64, (s), __VA_ARGS__);)        \
     }                                                               \
 }
 

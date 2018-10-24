@@ -193,9 +193,7 @@ int sdsTest(void) {
          * SDS header types. */
         for (i = 0; i < 10; i++) {
             size_t oldlen = sdslen(x);
-            int type;
             x = sdsMakeRoomFor(x,step);
-            type = x[-1]&SDS_TYPE_MASK;
 
             test_cond("sdsMakeRoomFor() len", sdslen(x) == oldlen);
             test_cond("sdsMakeRoomFor() free", sdsavail(x) >= step);
