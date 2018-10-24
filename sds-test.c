@@ -36,7 +36,7 @@
 #include "testhelp.h"
 #include "sds.h"
 
-int sdsTest(void) {
+static int sdsTest(void) {
     sds x = sdsnew("foo"), y;
 
     test_cond("Create a string and obtain the length",
@@ -408,7 +408,7 @@ int sdsTest(void) {
         x = sdsnew("123");
         std::string stdstr2 = sds2stdstr(x);
         test_cond("whether conversion to std::string works properly",
-            stdstr2 == "123")
+            strcmp(stdstr2.c_str(), "123") == 0)
 
         sdsfree(x);
     }

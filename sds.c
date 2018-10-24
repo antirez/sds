@@ -42,9 +42,74 @@
 
 const char *SDS_NOINIT = "SDS_NOINIT";
 
+/* Creates a single case statement for SDS_HDR_LAMBDA and SDS_HDR_LAMBDA_2.
+ * It creates the following:
+ *   sh: A pointer to the sds header struct.
+ *   sdshdr: A typedef of the sdshdr struct.
+ *   sdshdr_uint: The unsigned version of the header's int size.
+ *   sdshdr_int: Same as above, but signed. */
+#define SDS_HDR_CASE(T, s, ...)                                     \
+    case SDS_TYPE_##T: {                                            \
+        typedef struct sdshdr##T sdshdr;                            \
+        typedef uint##T##_t sdshdr_uint;                            \
+        typedef int##T##_t sdshdr_int;                              \
+        if (0) {sdshdr_int _int##T=0;(void)_int##T;                 \
+	        sdshdr_uint _uint##T=0;   (void)_uint##T;}              \
+        {   /* C90 needs a block here */                            \
+            sdshdr *sh = NULL;                                      \
+            /* Only set sh if s is not NULL */                      \
+            if ((size_t)(s + 1) != 1) {                             \
+                sds _tmp = (s);                                     \
+                sh = SDS_HDR(T,_tmp);                               \
+            }                                                       \
+            (void)sh;                                               \
+            { __VA_ARGS__; }                                        \
+        }                                                           \
+    }                                                               \
+    break
+
+/* Automatically generates the code block for each sds type. */
+#define SDS_HDR_LAMBDA(s, ...) {                                    \
+    int _resized = 0;                                               \
+_sds_hdr_lambda_retry: if (0) {                                     \
+        (void)_resized;                                             \
+        goto _sds_hdr_lambda_retry;                                 \
+    } {                                                             \
+        const unsigned char _flags = (s)[-1];                       \
+        SDS_HDR_LAMBDA_2(s, (_flags) & SDS_TYPE_MASK, __VA_ARGS__); \
+    }                                                               \
+}
+
+/* Checks if we need to resize the string, and either updates sh or
+ * retries the lambda if needed. */
+#define SDS_HDR_LAMBDA_CHECK_SPACE(s, size, targetsize) do {        \
+    if (!_resized && (sh) && SDS_UNLIKELY((size) < (targetsize))) { \
+        enum sdsstatus _status;                                     \
+        (s) = sdsMakeRoomForStatus((s), (targetsize), &_status);    \
+        _resized = 1;                                               \
+        /* Silently move on */                                      \
+        if (_status == SDS_STATUS_CHANGED) {                        \
+            sh = (sdshdr *)((s) - (sizeof(sdshdr) + 1));            \
+        } else if (_status == SDS_STATUS_CHANGED_TYPE) {            \
+            /* We have to check everything again. */                \
+            goto _sds_hdr_lambda_retry;                             \
+        }                                                           \
+    }                                                               \
+} while (0)
+
+/* Same as above, but takes a precalculated type option. */
+#define SDS_HDR_LAMBDA_2(s, _type, ...) {                           \
+    switch ((_type)) {                                              \
+        SDS_HDR_CASE(8, (s), __VA_ARGS__);                          \
+        SDS_HDR_CASE(16, (s), __VA_ARGS__);                         \
+        SDS_HDR_CASE(32, (s), __VA_ARGS__);                         \
+        SDS_64_BIT_ONLY(SDS_HDR_CASE(64, (s), __VA_ARGS__);)        \
+    }                                                               \
+}
+
 /* Note: We add 1 because of the flags byte. */
 static inline int sdsHdrSize(char type) {
-    SDS_HDR_LAMBDA_2(NULL, type & SDS_TYPE_MASK, {
+    SDS_HDR_LAMBDA_2(0, type & SDS_TYPE_MASK, {
         return sizeof(sdshdr) + 1;
     });
     SDS_UNREACHABLE(0);
@@ -64,6 +129,49 @@ static inline char sdsReqType(size_t string_size) {
 #endif
 }
 
+
+/* Length of an sds string. Use it like strlen. */
+SDS_CONST_FUNC size_t sdslen(const sds s) {
+    SDS_HDR_LAMBDA(s, { return sh->len; });
+    SDS_UNREACHABLE(0);
+}
+/* Available space on an sds string */
+SDS_CONST_FUNC size_t sdsavail(const sds s) {
+    SDS_HDR_LAMBDA(s, { return sh->alloc - sh->len; });
+    SDS_UNREACHABLE(0);
+}
+/* sdsalloc() = sdsavail() + sdslen() */
+SDS_CONST_FUNC size_t sdsalloc(const sds s) {
+    SDS_HDR_LAMBDA(s, { return sh->alloc; });
+    SDS_UNREACHABLE(0);
+}
+
+/* Breaking changes: These now may reallocate and return themselves.*/
+SDS_MUT_FUNC sds sdssetlen(sds s, size_t newlen) {
+    SDS_HDR_LAMBDA(s, {
+        SDS_HDR_LAMBDA_CHECK_SPACE(s, sh->alloc, newlen + 1);
+        sh->len = newlen;
+        return s;
+    });
+    SDS_UNREACHABLE(NULL);
+}
+SDS_MUT_FUNC sds sdsinclen(sds s, size_t inc) {
+    SDS_HDR_LAMBDA(s, {
+        SDS_HDR_LAMBDA_CHECK_SPACE(s, sh->alloc, sh->len + inc + 1);
+        sh->len += inc;
+        return s;
+    });
+    SDS_UNREACHABLE(NULL);
+}
+SDS_MUT_FUNC sds sdssetalloc(sds s, size_t newlen) {
+    SDS_HDR_LAMBDA(s, {
+        SDS_HDR_LAMBDA_CHECK_SPACE(s, newlen ,(sdshdr_uint)-1);
+        sh->alloc = newlen;
+        return s;
+    });
+    SDS_UNREACHABLE(NULL);
+}
+
 /* Create a new sds string with the content specified by the 'init' pointer
  * and 'initlen'.
  * If NULL is used for 'init' the string is initialized with zero bytes.
@@ -78,20 +186,20 @@ static inline char sdsReqType(size_t string_size) {
  * end of the string. However the string is binary safe and can contain
  * \0 characters in the middle, as the length is stored in the sds header. */
 SDS_INIT_FUNC sds sdsnewlen(const void *s_restrict init, size_t initlen) {
-    void *sh;
+    void *sh2;
     sds s;
     char type = sdsReqType(initlen);
 
     int hdrlen = sdsHdrSize(type);
     unsigned char *fp; /* flags pointer. */
 
-    sh = s_malloc(hdrlen+initlen+1);
-    if (sh == NULL) SDS_ERR_RETURN(NULL);
+    sh2 = s_malloc(hdrlen+initlen+1);
+    if (sh2 == NULL) SDS_ERR_RETURN(NULL);
     if (init==SDS_NOINIT)
         init = NULL;
     else if (!init)
-        memset(sh, 0, hdrlen+initlen+1);
-    s = (char*)sh+hdrlen;
+        memset(sh2, 0, hdrlen+initlen+1);
+    s = (char*)sh2+hdrlen;
     fp = ((unsigned char*)s)-1;
 
     /* Set the new length. */
@@ -107,58 +215,10 @@ SDS_INIT_FUNC sds sdsnewlen(const void *s_restrict init, size_t initlen) {
     return s;
 }
 
-/* Create an empty (zero length) sds string. Even in this case the string
- * always has an implicit null term. */
-SDS_INIT_FUNC sds sdsempty(void) {
-    return sdsnewlen("",0);
-}
-
-/* Create a new sds string starting from a null terminated C string. */
-SDS_INIT_FUNC sds sdsnew(const char *s_restrict init) {
-    size_t initlen = (init == NULL) ? 0 : strlen(init);
-    return sdsnewlen(init, initlen);
-}
-
-/* Duplicate an sds string. */
-SDS_INIT_FUNC sds sdsdup(const sds s_restrict s) {
-    if (SDS_UNLIKELY(s == NULL))
-        return sdsnewlen("",0);
-    return sdsnewlen(s, sdslen(s));
-}
-
 /* Free an sds string. No operation is performed if 's' is NULL. */
 void sdsfree(sds s) {
     if (SDS_UNLIKELY(s == NULL)) return;
     s_free((char*)s-sdsHdrSize(s[-1]));
-}
-
-/* Set the sds string length to the length as obtained with strlen(), so
- * considering as content only up to the first null term character.
- *
- * This function is useful when the sds string is hacked manually in some
- * way, like in the following example:
- *
- * s = sdsnew("foobar");
- * s[2] = '\0';
- * sdsupdatelen(s);
- * printf("%d\n", sdslen(s));
- *
- * The output will be "2", but if we comment out the call to sdsupdatelen()
- * the output will be "6" as the string was modified but the logical length
- * remains 6 bytes. */
-SDS_MUT_FUNC sds sdsupdatelen(sds s) {
-    size_t reallen = strlen(s);
-    return sdssetlen(s, reallen);
-}
-
-/* Modify an sds string in-place to make it empty (zero length).
- * However all the existing buffer is not discarded but set as free space
- * so that next append operations will not require allocations up to the
- * number of bytes previously available. */
-SDS_MUT_FUNC sds sdsclear(sds s) {
-    s = sdssetlen(s, 0);
-    s[0] = '\0';
-    return s;
 }
 
 /* Enlarge the free space at the end of the sds string so that the caller
@@ -168,10 +228,16 @@ SDS_MUT_FUNC sds sdsclear(sds s) {
  * Note: this does not change the *length* of the sds string as returned
  * by sdslen(), but only the free buffer space we have. */
 SDS_MUT_FUNC sds sdsMakeRoomFor(sds s, size_t addlen) {
+    enum sdsstatus status; /* unused */
+    return sdsMakeRoomForStatus(s, addlen, &status);
+}
+SDS_MUT_FUNC sds sdsMakeRoomForStatus(sds s_restrict s, size_t addlen, enum sdsstatus *s_restrict status) {
     char *shptr, *newsh;
     size_t len, newlen;
     char type, oldtype = s[-1] & SDS_TYPE_MASK;
     int hdrlen;
+
+    *status = SDS_STATUS_NOT_CHANGED;
 
     SDS_HDR_LAMBDA_2(s, oldtype, {
         len = sh->len;
@@ -194,6 +260,8 @@ SDS_MUT_FUNC sds sdsMakeRoomFor(sds s, size_t addlen) {
         newsh = (char *)s_realloc(shptr, hdrlen+newlen+1);
         if (SDS_UNLIKELY(newsh == NULL)) SDS_ERR_RETURN(NULL);
         s = newsh+hdrlen;
+
+        *status = SDS_STATUS_CHANGED;
     } else {
         /* Since the header size changes, need to move the string forward,
          * and can't use realloc */
@@ -203,6 +271,8 @@ SDS_MUT_FUNC sds sdsMakeRoomFor(sds s, size_t addlen) {
         s_free(shptr);
         s = newsh+hdrlen;
         s[-1] = type;
+
+        *status = SDS_STATUS_CHANGED_TYPE;
     }
     /* Set the new length manually */
     SDS_HDR_LAMBDA(s, {
@@ -219,11 +289,11 @@ SDS_MUT_FUNC sds sdsMakeRoomFor(sds s, size_t addlen) {
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
 SDS_MUT_FUNC sds sdsRemoveFreeSpace(sds s) {
-    char *sh, *newsh;
+    char *sh2, *newsh;
     char type, oldtype = s[-1] & SDS_TYPE_MASK;
     int hdrlen, oldhdrlen = sdsHdrSize(oldtype);
     size_t len = sdslen(s);
-    sh = (char*)s-oldhdrlen;
+    sh2 = (char*)s-oldhdrlen;
 
     /* Check what would be the minimum SDS header that is just good enough to
      * fit this string. */
@@ -235,14 +305,14 @@ SDS_MUT_FUNC sds sdsRemoveFreeSpace(sds s) {
      * only if really needed. Otherwise if the change is huge, we manually
      * reallocate the string to use the different header type. */
     if (oldtype==type || type > SDS_TYPE_8) {
-        newsh = (char *)s_realloc(sh, oldhdrlen+len+1);
+        newsh = (char *)s_realloc(sh2, oldhdrlen+len+1);
         if (SDS_UNLIKELY(newsh == NULL)) SDS_ERR_RETURN(NULL);
         s = newsh+oldhdrlen;
     } else {
         newsh = (char *)s_malloc(hdrlen+len+1);
         if (SDS_UNLIKELY(newsh == NULL)) SDS_ERR_RETURN(NULL);
         memcpy(newsh+hdrlen, s, len+1);
-        s_free(sh);
+        s_free(sh2);
         s = newsh + hdrlen;
         s[-1] = type;
     }
@@ -340,49 +410,17 @@ SDS_MUT_FUNC sds sdscatlen(sds s_restrict s, const void *s_restrict t, size_t le
     return s;
 }
 
-/* Append the specified null termianted C string to the sds string 's'.
- *
- * After the call, the passed sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
-SDS_MUT_FUNC sds sdscat(sds s_restrict s, const char * s_restrict t) {
-    return sdscatlen(s, t, strlen(t));
-}
-
-/* Append the specified sds 't' to the existing sds 's'.
- *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
-SDS_MUT_FUNC sds sdscatsds(sds s_restrict s, const sds s_restrict t) {
-    return sdscatlen(s, t, sdslen(t));
-}
-
 /* Destructively modify the sds string 's' to hold the specified binary
  * safe string pointed by 't' of length 'len' bytes. */
 SDS_MUT_FUNC sds sdscpylen(sds s_restrict s, const char *s_restrict t, size_t len) {
-    int i;
-    for (i = 0; i < 2; ++i) {
-        SDS_HDR_LAMBDA(s, {
-            if (sh->alloc < len) {
-                s = sdsMakeRoomFor(s,len-sh->len);
-                if (SDS_UNLIKELY(s == NULL)) SDS_ERR_RETURN(NULL);
-                continue;
-            }
-            memcpy(s, t, len);
-            s[len] = '\0';
-            sh->len = len;
-            return s;
-        });
-    }
-    SDS_UNREACHABLE(NULL);
+    SDS_HDR_LAMBDA(s, {
+        SDS_HDR_LAMBDA_CHECK_SPACE(s, sh->alloc, len);
+        sh->len = len;
+    });
+    memcpy(s, t, len);
+    s[len] = '\0';
+    return s;
 }
-
-/* Like sdscpylen() but 't' must be a null-termined string so that the length
- * of the string is obtained with strlen(). */
-SDS_MUT_FUNC sds sdscpy(sds s_restrict s, const char *s_restrict t) {
-    return sdscpylen(s, t, strlen(t));
-}
-
-
 
 #define SDS_LLSTR_SIZE 21
 #define SDS_INTSTR_SIZE 12
@@ -460,19 +498,14 @@ static int sdslonglong2str(char *s, long long value) {
  * then calling sds<T>2str to make the conversion. */
 #define SDS_INT_ADD_FUNC(T, type, minsize)                      \
 sds (sdsadd##T)(sds s, type value) {                            \
-    int len, i;                                                 \
-    for (i = 0; i < 2; i++) {                                   \
-        SDS_HDR_LAMBDA(s, {                                     \
-            if (sh->alloc - sh->len < (minsize)) {              \
-                s = sdsMakeRoomFor(s, (minsize));               \
-                continue;                                       \
-            }                                                   \
-            len = sds##T##2str(&s[sh->len], value);             \
+    int len;                                                    \
+    SDS_HDR_LAMBDA(s, {                                     \
+        SDS_HDR_LAMBDA_CHECK_SPACE(s, sh->alloc-sh->len, (minsize));              \
+        len = sds##T##2str(&s[sh->len], value);             \
                                                                 \
-            sh->len = len;                                      \
-            return s;                                           \
-        });                                                     \
-    }                                                           \
+        sh->len += len;                                     \
+        return s;                                           \
+    });                                                     \
     SDS_UNREACHABLE(NULL);                                      \
 }                                                               \
 sds (sdsfrom##T)(type value) {                                  \
@@ -487,6 +520,18 @@ SDS_INT_ADD_FUNC(ulonglong, unsigned long long, SDS_LLSTR_SIZE)
 
 #undef SDS_INT_ADD_FUNC
 
+SDS_MUT_FUNC sds sdsaddchar(sds s, unsigned int c) {
+    size_t len;
+
+    SDS_HDR_LAMBDA(s, {
+        len = sh->len;
+        SDS_HDR_LAMBDA_CHECK_SPACE(s, sh->alloc - len, 1);
+        sh->len++;
+    });
+	s[len] = (char)c;
+    s[len + 1] = '\0';
+    return s;
+}
 
 /* Like sdscatprintf() but gets va_list instead of being variadic. */
 SDS_PRINTF_FUNC(2,0) sds sdscatvprintf(sds s_restrict s, SDS_FMT_STR const char *s_restrict fmt,
@@ -911,14 +956,14 @@ SDS_MUT_FUNC sds sdscatrepr(sds s_restrict s, const char *s_restrict p, size_t l
 
 /* Helper function for sdssplitargs() that returns non zero if 'c'
  * is a valid hex digit. */
-int is_hex_digit(char c) {
+static int is_hex_digit(char c) {
     return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
            (c >= 'A' && c <= 'F');
 }
 
 /* Helper function for sdssplitargs() that converts a hex digit into an
  * integer from 0 to 15 */
-int hex_digit_to_int(char c) {
+static int hex_digit_to_int(char c) {
     switch(c) {
     case '0': return 0;
     case '1': return 1;
