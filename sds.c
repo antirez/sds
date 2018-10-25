@@ -1,4 +1,3 @@
-
 /* SDSLib 2.0 -- A C dynamic strings library
  *
  * Copyright (c) 2006-2015, Salvatore Sanfilippo <antirez at gmail dot com>
@@ -40,7 +39,38 @@
 #include "sds.h"
 #include "sdsalloc.h"
 
+#define sds char *
+
 const char *SDS_NOINIT = "SDS_NOINIT";
+
+/* If you define SDS_ABORT_ON_ERROR, instead of the sds functions returning
+ * NULL, it will print a message and abort. This also guarantees non null
+ * return values, which allows potential optimizations. */
+#ifdef SDS_ABORT_ON_ERROR
+#  define SDS_UNREACHABLE(...)                                          \
+    do {                                                                \
+        fprintf(stderr, "%s:%d: sds reached unreachable code!\n"        \
+                        "Aborting because of SDS_ABORT_ON_ERROR.\n",    \
+                __FILE__, __LINE__);                                    \
+        abort();                                                        \
+    } while (0)
+#  define SDS_ERR_RETURN(...)                                           \
+    do {                                                                \
+        fprintf(stderr, "%s:%d: sds encountered an error!\n"            \
+                        "Aborting because of SDS_ABORT_ON_ERROR.\n",    \
+                __FILE__, __LINE__);                                    \
+        abort();                                                        \
+    } while (0)
+#else
+   /* Clang 3.0 (or earlier?) and GCC 4.5.0 added __builtin_unreachable */
+#  if (defined(__clang__) && __clang_version_major__ >= 3) || \
+      (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)))
+#    define SDS_UNREACHABLE(...) __builtin_unreachable(); return __VA_ARGS__
+#  else
+#    define SDS_UNREACHABLE(...) return __VA_ARGS__
+#  endif
+#  define SDS_ERR_RETURN(...) return __VA_ARGS__
+#endif
 
 /* Creates a single case statement for SDS_HDR_LAMBDA and SDS_HDR_LAMBDA_2.
  * It creates the following:
@@ -49,34 +79,33 @@ const char *SDS_NOINIT = "SDS_NOINIT";
  *   sdshdr_uint: The unsigned version of the header's int size.
  *   sdshdr_int: Same as above, but signed. */
 #define SDS_HDR_CASE(T, s, ...)                                     \
-    case SDS_TYPE_##T: {                                            \
+     {                                                              \
         typedef struct sdshdr##T sdshdr;                            \
         typedef uint##T##_t sdshdr_uint;                            \
         typedef int##T##_t sdshdr_int;                              \
-        if (0) {sdshdr_int _int##T=0;(void)_int##T;                 \
-	        sdshdr_uint _uint##T=0;   (void)_uint##T;}              \
+        if (0) { /* Prevent unused warnings */                      \
+            sdshdr_int _sds_int##T=0; (void)_sds_int##T;            \
+            sdshdr_uint _sds_uint##T=0; (void)_sds_uint##T;         \
+        }                                                           \
         {   /* C90 needs a block here */                            \
-            sdshdr *sh = NULL;                                      \
-            /* Only set sh if s is not NULL */                      \
-            if ((size_t)(s + 1) != 1) {                             \
-                sds _tmp = (s);                                     \
-                sh = SDS_HDR(T,_tmp);                               \
-            }                                                       \
+            sdshdr *sh = SDS_HDR(T, s);                             \
             (void)sh;                                               \
             { __VA_ARGS__; }                                        \
         }                                                           \
     }                                                               \
-    break
+
 
 /* Automatically generates the code block for each sds type. */
 #define SDS_HDR_LAMBDA(s, ...) {                                    \
     int _resized = 0;                                               \
-_sds_hdr_lambda_retry: if (0) {                                     \
+_sds_hdr_lambda_retry:                                              \
+    if (0) { /* More unused warning silencing */                    \
         (void)_resized;                                             \
         goto _sds_hdr_lambda_retry;                                 \
-    } {                                                             \
+    }                                                               \
+    {                                                               \
         const unsigned char _flags = (s)[-1];                       \
-        SDS_HDR_LAMBDA_2(s, (_flags), __VA_ARGS__); \
+        SDS_HDR_LAMBDA_2(s, (_flags), __VA_ARGS__);                 \
     }                                                               \
 }
 
@@ -98,21 +127,47 @@ _sds_hdr_lambda_retry: if (0) {                                     \
 } while (0)
 
 /* Same as above, but takes a precalculated type option. */
+#ifdef SDS_32_BIT
+/* 32-bit version. */
 #define SDS_HDR_LAMBDA_2(s, _type, ...) {                           \
-    switch ((_type) & SDS_TYPE_MASK) {                                              \
-        SDS_HDR_CASE(8, (s), __VA_ARGS__);                          \
-        SDS_HDR_CASE(16, (s), __VA_ARGS__);                         \
-        SDS_HDR_CASE(32, (s), __VA_ARGS__);                         \
-        SDS_64_BIT_ONLY(SDS_HDR_CASE(64, (s), __VA_ARGS__);)        \
-    }                                                               \
+    enum sdshdrtype _type_ = (enum sdshdrtype)(_type&SDS_TYPE_MASK);\
+    if (_type_ == SDS_TYPE_8)                                       \
+        SDS_HDR_CASE(8, (s), __VA_ARGS__)                           \
+    else if (_type_ == SDS_TYPE_16)                                 \
+        SDS_HDR_CASE(16, (s), __VA_ARGS__)                          \
+    else                                  \
+        SDS_HDR_CASE(32, (s), __VA_ARGS__)                          \
 }
-
+#else
+/* 64-bit version. The compiler decides whether to make this a switch. */
+#define SDS_HDR_LAMBDA_2(s, _type, ...) {                           \
+    enum sdshdrtype _type_ = (enum sdshdrtype)(_type&SDS_TYPE_MASK);\
+    if (_type_ == SDS_TYPE_8)                                       \
+        SDS_HDR_CASE(8, (s), __VA_ARGS__)                           \
+    else if (_type_ == SDS_TYPE_16)                                 \
+        SDS_HDR_CASE(16, (s), __VA_ARGS__)                          \
+    else if (_type_ == SDS_TYPE_32)                                 \
+        SDS_HDR_CASE(32, (s), __VA_ARGS__)                          \
+    else                                                            \
+        SDS_HDR_CASE(64, (s), __VA_ARGS__)                          \
+}
+#endif
 /* Note: We add 1 because of the flags byte. */
-static inline int sdsHdrSize(char type) {
-    SDS_HDR_LAMBDA_2(0, type & SDS_TYPE_MASK, {
-        return sizeof(sdshdr) + 1;
-    });
-    SDS_UNREACHABLE(0);
+static inline size_t sdsHdrSize(char type) {
+    const enum sdshdrtype hdrtype = (enum sdshdrtype) (type & SDS_TYPE_MASK);
+    if (hdrtype == SDS_TYPE_8)
+        return sizeof(struct sdshdr8) + 1;
+    else if (hdrtype == SDS_TYPE_16)
+        return sizeof(struct sdshdr16) + 1;
+#ifdef SDS_32_BIT
+    else
+        return sizeof(struct sdshdr32) + 1;
+#else
+    else if (hdrtype == SDS_TYPE_32)
+        return sizeof(struct sdshdr32) + 1;
+    else
+        return sizeof(struct sdshdr64) + 1;
+#endif
 }
 
 static inline char sdsReqType(size_t string_size) {
@@ -120,12 +175,12 @@ static inline char sdsReqType(size_t string_size) {
         return SDS_TYPE_8;
     if (string_size < 1<<16)
         return SDS_TYPE_16;
-#ifndef SDS_32_BIT
+#ifdef SDS_32_BIT
+    return SDS_TYPE_32;
+#else
     if (string_size < 1ll<<32)
         return SDS_TYPE_32;
     return SDS_TYPE_64;
-#else
-    return SDS_TYPE_32;
 #endif
 }
 
@@ -136,7 +191,7 @@ SDS_CONST_FUNC size_t sdslen(const sds s) {
     SDS_UNREACHABLE(0);
 }
 /* Available space on an sds string */
-SDS_CONST_FUNC size_t sdsavail(const sds s) {
+SDS_CONST_FUNC size_t sdsavail(const char *const s) {
     SDS_HDR_LAMBDA(s, { return sh->alloc - sh->len; });
     SDS_UNREACHABLE(0);
 }
@@ -235,7 +290,7 @@ SDS_MUT_FUNC sds sdsMakeRoomForStatus(sds s_restrict s, size_t addlen, enum sdss
     char *shptr, *newsh;
     size_t len, newlen;
     char type, oldtype = s[-1] & SDS_TYPE_MASK;
-    int hdrlen;
+    size_t hdrlen;
 
     *status = SDS_STATUS_NOT_CHANGED;
 
@@ -256,6 +311,7 @@ SDS_MUT_FUNC sds sdsMakeRoomForStatus(sds s_restrict s, size_t addlen, enum sdss
     type = sdsReqType(newlen);
 
     hdrlen = sdsHdrSize(type);
+
     if (oldtype==type) {
         newsh = (char *)s_realloc(shptr, hdrlen+newlen+1);
         if (SDS_UNLIKELY(newsh == NULL)) SDS_ERR_RETURN(NULL);
@@ -367,8 +423,8 @@ SDS_CONST_FUNC void *sdsAllocPtr(sds s) {
 void sdsIncrLen(sds s, ptrdiff_t incr) {
     size_t len;
     SDS_HDR_LAMBDA(s, {
-        assert((incr >= 0 && sh->alloc - sh->len >= (sdshdr_uint)incr) ||
-               (incr < 0 && sh->len >= (sdshdr_uint)(-incr)));
+        assert((incr >= 0 && (ptrdiff_t)sh->alloc - (ptrdiff_t)sh->len >= (sdshdr_uint)incr) ||
+               (incr < 0 && (ptrdiff_t)sh->len >= (sdshdr_uint)(-incr)));
         len = (sh->len += incr);
     });
     s[len] = '\0';
@@ -496,28 +552,28 @@ static int sdslonglong2str(char *s, long long value) {
 /* Creates functions named sdsadd<T> and sdsfrom<T> that appends a <type>
  * int value to an existing sds string, checking if <minsize> is available,
  * then calling sds<T>2str to make the conversion. */
-#define SDS_INT_ADD_FUNC(T, type, minsize)                      \
-sds (sdsadd##T)(sds s, type value) {                            \
-    int len;                                                    \
-    SDS_HDR_LAMBDA(s, {                                     \
-        SDS_HDR_LAMBDA_CHECK_SPACE(s, sh->alloc-sh->len, (minsize));              \
-        len = sds##T##2str(&s[sh->len], value);             \
-                                                                \
-        sh->len += len;                                     \
-        return s;                                           \
-    });                                                     \
-    SDS_UNREACHABLE(NULL);                                      \
-}                                                               \
-sds (sdsfrom##T)(type value) {                                  \
-    return (sdsadd##T)(sdsempty(), value);                      \
+#define SDS_INT_ADD_FUNC(T, type, minsize)                              \
+SDS_MUT_FUNC sds (sdsadd##T)(sds s, type value) {                       \
+    int len;                                                            \
+    SDS_HDR_LAMBDA(s, {                                                 \
+        SDS_HDR_LAMBDA_CHECK_SPACE(s, sh->alloc-sh->len, (minsize));    \
+        len = sds##T##2str(&s[sh->len], value);                         \
+                                                                        \
+        sh->len += len;                                                 \
+        return s;                                                       \
+    });                                                                 \
+    SDS_UNREACHABLE(NULL);                                              \
+}                                                                       \
+SDS_INIT_FUNC sds (sdsfrom##T)(type value) {                            \
+    return (sdsadd##T)(sdsempty(), value);                              \
 }
-
+#undef sds
 /* Add the functions */
 SDS_INT_ADD_FUNC(int, int, SDS_INTSTR_SIZE)
 SDS_INT_ADD_FUNC(uint, unsigned, SDS_INTSTR_SIZE)
 SDS_INT_ADD_FUNC(longlong, long long, SDS_LLSTR_SIZE)
 SDS_INT_ADD_FUNC(ulonglong, unsigned long long, SDS_LLSTR_SIZE)
-
+#define sds char *
 #undef SDS_INT_ADD_FUNC
 
 SDS_MUT_FUNC sds sdsaddchar(sds s, unsigned int c) {
@@ -528,13 +584,13 @@ SDS_MUT_FUNC sds sdsaddchar(sds s, unsigned int c) {
         SDS_HDR_LAMBDA_CHECK_SPACE(s, sh->alloc - len, 1);
         sh->len++;
     });
-	s[len] = (char)c;
+    s[len] = (char)c;
     s[len + 1] = '\0';
     return s;
 }
 
 /* Like sdscatprintf() but gets va_list instead of being variadic. */
-SDS_PRINTF_FUNC(2,0) sds sdscatvprintf(sds s_restrict s, SDS_FMT_STR const char *s_restrict fmt,
+SDS_PRINTF_FUNC(2,0) sds sdscatvprintf(sds s_restrict s, const char *s_restrict fmt,
                                        va_list ap) {
     va_list cpy;
     char staticbuf[1024], *buf = staticbuf, *t;
@@ -544,18 +600,10 @@ SDS_PRINTF_FUNC(2,0) sds sdscatvprintf(sds s_restrict s, SDS_FMT_STR const char 
     int i;
 
     /* We try to start using a static buffer for speed.
-     * If not possible we revert to stack or heap
-     * allocation. */
+     * If not possible we revert to stack or allocation. */
     if (buflen > (int)sizeof(staticbuf)) {
-        /* Alloca is faster, but we don't want to alloca
-         * more than 32 kB, because we might overflow
-         * the stack. */
-        if (SDS_LIKELY(buflen <= 32 * 1024)) {
-            buf = (char *)alloca(buflen);
-        } else {
-            malloced = 1;
-            buf = (char *)s_malloc(buflen);
-        }
+        malloced = 1;
+        buf = (char *)s_malloc(buflen);
         if (SDS_UNLIKELY(buf == NULL)) SDS_ERR_RETURN(NULL);
     } else {
         buflen = sizeof(staticbuf);
@@ -579,13 +627,10 @@ SDS_PRINTF_FUNC(2,0) sds sdscatvprintf(sds s_restrict s, SDS_FMT_STR const char 
         } else if (len >= buflen) {
             buflen = len + 1;
 
-            if (SDS_LIKELY(buflen <= 32 * 1024)) {
-                buf = (char *)alloca(buflen);
-            } else {
-                if (SDS_UNLIKELY(malloced)) free(buf);
-                malloced = 1;
-                buf = (char *)s_malloc(buflen);
-            }
+            if (SDS_UNLIKELY(malloced)) free(buf);
+            buf = (char *)s_malloc(buflen);
+            malloced = 1;
+
             if (SDS_UNLIKELY(buf == NULL)) SDS_ERR_RETURN(NULL);
 
             continue;
@@ -616,8 +661,7 @@ SDS_PRINTF_FUNC(2,0) sds sdscatvprintf(sds s_restrict s, SDS_FMT_STR const char 
  * s = sdscatprintf(sdsempty(), "... your format ...", args);
  */
 SDS_PRINTF_FUNC(2,3) sds sdscatprintf(sds s_restrict s,
-                                      SDS_FMT_STR const char *s_restrict fmt,
-                                      ...) {
+                                      const char *s_restrict fmt,  ...) {
     va_list ap;
     char *t;
 

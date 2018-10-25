@@ -31,10 +31,41 @@
  */
 
 #include <stdio.h>
+#ifdef __cplusplus
+/* For some reason, some platforms have C++'s limits.h not define LLONG_MAX,
+ * but climits does have it. This even happens on C++14. */
+#include <climits>
+#else
 #include <limits.h>
+#endif
 
 #include "testhelp.h"
 #include "sds.h"
+
+/* We want this to be longer than 512 characters, the initial size of the
+ * sdscatvprintf buffer. */
+
+/* https://www.lipsum.com - about 1024 bytes */
+#define LOREM_IPSUM                                                              \
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut in quam porta, "\
+    "ornare nibh nec, faucibus enim. Cras sit amet mi ante. Suspendisse vel "    \
+    "gravida magna. Curabitur hendrerit sem quis blandit laoreet. Donec vitae "  \
+    "nibh in ipsum vulputate dignissim vitae non nunc. Suspendisse tristique, "  \
+    "nunc quis ornare venenatis, lectus massa fringilla magna, eu eleifend "     \
+    "metus sem vel sapien. Maecenas egestas non ipsum id auctor. Nunc ornare "   \
+    "vitae tellus tincidunt luctus. Mauris sagittis euismod dapibus. Phasellus " \
+    "at ligula dui. Quisque ullamcorper laoreet malesuada. Integer dapibus, "    \
+    "nulla a tincidunt placerat, tortor elit malesuada turpis, a maximus ante "  \
+    "nisl sit amet eros. Proin vitae pretium ex, sit amet gravida nulla. "       \
+    "Phasellus pulvinar justo vitae lacus dapibus fermentum.\n\n"                \
+    "Mauris ut sapien sit amet purus fringilla tincidunt. Integer a interdum "   \
+    "velit. Fusce suscipit odio vitae nulla varius, a auctor neque elementum. "  \
+    "Morbi at libero sed orci interdum auctor a vitae tortor. Mauris lacinia "   \
+    "eget ex vitae viverra. "
+
+/* Make it longer. Don't cross the 4095 limit, though. */
+static const char reallyLongString[] = LOREM_IPSUM LOREM_IPSUM LOREM_IPSUM LOREM_IPSUM;
+static const size_t reallyLongStringLen = sizeof(reallyLongString) - 1;
 
 static int sdsTest(void) {
     sds x = sdsnew("foo"), y;
@@ -55,28 +86,37 @@ static int sdsTest(void) {
     test_cond("sdscpy() against an originally longer string",
         sdslen(x) == 1 && memcmp(x,"a\0",2) == 0)
 
-    x = sdscpy(x,"xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk");
+    x = sdscpy(x, reallyLongString);
     test_cond("sdscpy() against an originally shorter string",
-        sdslen(x) == 33 &&
-        memcmp(x,"xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk\0",33) == 0)
+        sdslen(x) == reallyLongStringLen &&
+        memcmp(x,reallyLongString,reallyLongStringLen + 1) == 0)
 
     x = sdsclear(x);
-    test_cond("sdsclear() properly clears a string", strlen(x) == 0)
+    test_cond("sdsclear() properly clears a string",
+        x[0] == '\0' && sdslen(x) == 0 && strlen(x) == 0)
 
     x = sdscat(x, "bar");
     test_cond("sdsclear() overwrites an sds string properly",
         sdslen(x) == 3 && memcmp(x, "bar\0", 4) == 0)
 
     sdsfree(x);
+
+    x = sdscat(sdsempty(), reallyLongString);
+    test_cond("sdscat works on a really long string",
+        sdslen(x) == reallyLongStringLen
+     && memcmp(x, reallyLongString, reallyLongStringLen + 1) == 0)
+
+    sdsfree(x);
+
     x = sdscatprintf(sdsempty(),"%d",123);
     test_cond("sdscatprintf() seems working in the base case",
         sdslen(x) == 3 && memcmp(x,"123\0",4) == 0)
 
     sdsfree(x);
-    x = sdscatprintf(sdsempty(), "%s", "0ABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJ");
+    x = sdscatprintf(sdsempty(), "%s", reallyLongString);
     test_cond("sdscatprintf() seems working with a very long string",
-        sdslen(x) == 101 &&
-        memcmp("0ABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJ", x, 101) == 0)
+        sdslen(x) == reallyLongStringLen &&
+        memcmp(reallyLongString, x, reallyLongStringLen) == 0)
 
     sdsfree(x);
     x = sdsnew("--");
@@ -96,10 +136,10 @@ static int sdsTest(void) {
 
 
     sdsfree(x);
-    x = sdscatfmt(sdsempty(), "%s", "xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk");
+    x = sdscatfmt(sdsempty(), "%s", reallyLongString);
     test_cond("sdscatfmt() seems working with a very long string",
-        sdslen(x) == 33 &&
-        memcmp(x,"xyzxxxxxxxxxxyyyyyyyyyykkkkkkkkkk\0",33) == 0)
+        sdslen(x) == reallyLongStringLen &&
+        memcmp(x,reallyLongString, reallyLongStringLen + 1) == 0)
 
     sdsfree(x);
     x = sdsnew(" x ");
@@ -260,6 +300,7 @@ static int sdsTest(void) {
             && strcmp(split[1], "world") == 0
             && strcmp(split[2], "test") == 0)
         sdsfreesplitres(split, argcount);
+
         split = sdssplitargs("hello world \t\n  test\n   ", &argcount);
         test_cond("whether sdssplitargs works properly",
             argcount == 3
@@ -414,8 +455,8 @@ static int sdsTest(void) {
     }
 #    endif /* __cplusplus */
 #else /* SDSADD_TYPE == 0 */
-    puts("Not testing sdsadd. Try compiling with GCC, a C++11, or o C11 compiler, "
-         "or manually defining SDSADD.");
+    puts("Not testing sdsadd. Try compiling with GCC 3.2+, Clang, a C++11, or o C11 compiler, "
+         "or manually defining SDSADD_TYPE.");
 #endif /* SDSADD_TYPE */
     test_report()
     return 0;

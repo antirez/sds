@@ -38,39 +38,55 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <string.h>
+
+#ifdef __cplusplus
+#include <climits>
+#else
 #include <limits.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+/* SDS_ABORT_ON_ERROR allows us to guarantee that sds functions
+ * do not return null. */
+#ifdef SDS_ABORT_ON_ERROR
+#  define SDS_RET_NONNULL __attribute__((__returns_nonnull__))
+#else
+#  define SDS_RET_NONNULL
+#endif
+
+#ifdef _WIN32
+#  define SDS_EXPORT __declspec(dllexport)
+#else
+#  define SDS_EXPORT
 #endif
 
 /* Define some helpful function attributes. */
 #if defined(__GNUC__) || defined(__clang__) /* GCC/Clang */
   /* Have GCC or Clang emit a warning when an SDS mutation is either performed
    * on a null string or if the return value is ignored. */
-#  define SDS_MUT_FUNC __attribute__((__warn_unused_result__, __nonnull__(1)))
+#  define SDS_MUT_FUNC __attribute__((__warn_unused_result__, __nonnull__(1))) SDS_RET_NONNULL
   /* The same, but instead of warning on unused, it hints to the compiler
    * that this function returns a unique pointer. */
-#  define SDS_INIT_FUNC __extension__ __attribute__((__warn_unused_result__, __malloc__))
+#  define SDS_INIT_FUNC __attribute__((__warn_unused_result__, __malloc__)) SDS_RET_NONNULL
   /* An SDS function that doesn't modify the string. */
-#  define SDS_CONST_FUNC __extension__ __attribute__((__nonnull__(1), __pure__))
+#  define SDS_CONST_FUNC  __attribute__((__nonnull__(1), __pure__))
 #  define SDS_PRINTF_FUNC(fmt,args) __extension__ __attribute((                            \
-    __nonnull__(1), __warn_unused_result__, __format__(printf, fmt, args)))
-#  define SDS_FMT_STR
+    __nonnull__(1), __warn_unused_result__, __format__(printf, fmt, args))) SDS_RET_NONNULL
   /* Flags to signal that this is a likely or unlikely condition. */
-#  define SDS_LIKELY(x) __extension__ __builtin_expect(!!(x), 1)
-#  define SDS_UNLIKELY(x) __extension__ __builtin_expect(!!(x), 0)
+#  define SDS_LIKELY(x) __builtin_expect(!!(x), 1)
+#  define SDS_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else /* MSVC */
-#  if defined(_MSVC_VER) && (_MSVC_VER >= 1700)
+#  if defined(_MSC_VER) && (_MSC_VER >= 1700)
 #    include <sal.h>
 #    define SDS_MUT_FUNC _Check_return_
 #    define SDS_INIT_FUNC _Check_return_ __declspec(restrict)
-#    define SDS_FMT_STR _Printf_format_str_
 #    define SDS_PRINTF_FUNC(fmt, args) _Check_return_
 #  else
 #    define SDS_MUT_FUNC
 #    define SDS_INIT_FUNC
-#    define SDS_FMT_STR
 #    define SDS_PRINTF_FUNC(fmt, args)
 #  endif
 #  define SDS_CONST_FUNC
@@ -89,50 +105,29 @@ extern "C" {
 #  endif
 #endif
 
-/* Some diagnostics flags */
-#define _SDS_PRAGMA(x) _Pragma(#x)
-#define _SDS_IGNORE(x) _SDS_DIAG(ignored x)
-#define _SDS_ERROR(x) _SDS_DIAG(error x)
-
-#if defined(__clang__)
-#  define _SDS_DIAG(x) _SDS_PRAGMA(clang diagnostic x)
-#elif defined(__GNUC__)
-#  define _SDS_DIAG(x) _SDS_PRAGMA(GCC diagnostic x)
-#else
-#  define _SDS_DIAG(x)
-#endif
-
-/* If you define SDS_ABORT_ON_ERROR, instead of the sds functions returning
- * NULL, it will print a message and abort. */
-#ifdef SDS_ABORT_ON_ERROR
-#  define SDS_UNREACHABLE(...)                                          \
-    do {                                                                \
-        fprintf(stderr, "%s:%d: sds reached unreachable code!\n"        \
-                        "Aborting because of SDS_ABORT_ON_ERROR.\n",    \
-                __FILE__, __LINE__);                                    \
-        abort();                                                        \
-    } while (0)
-#  define SDS_ERR_RETURN(...)                                           \
-    do {                                                                \
-        fprintf(stderr, "%s:%d: sds encountered an error!\n"            \
-                        "Aborting because of SDS_ABORT_ON_ERROR.\n",    \
-                __FILE__, __LINE__);                                    \
-        abort();                                                        \
-    } while (0)
-#else
-   /* Clang 3.0 (or earlier?) and GCC 4.5.0 added __builtin_unreachable */
-#  if (defined(__clang__) && __clang_version_major__ >= 3) || (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)))
-#    define SDS_UNREACHABLE(...) __builtin_unreachable(); return __VA_ARGS__
+#if defined(__STDC__) && (!defined(__STDC_VERSION__) || (defined(__STDC_VERSION__) && __STDC_VERSION__ < 199901L))
+#  if defined(__GNUC__) || defined(__clang__)
+#    define s_inline __inline__
 #  else
-#    define SDS_UNREACHABLE(...) return __VA_ARGS__
+#    define s_inline
 #  endif
-#  define SDS_ERR_RETURN(...) return __VA_ARGS__
+#else
+#  define s_inline inline
 #endif
 
 #define SDS_MAX_PREALLOC (1024*1024)
 extern const char *SDS_NOINIT;
 
 typedef char *sds;
+/* We use sds as a macro here to document that the functions are for a const sds string,
+ * but if we use 'const sds', instead of const char *, we have char *const. */
+#define sds char *
+
+#ifndef SDS_32_BIT
+#  if ULLONG_MAX > UINTPTR_MAX
+#    define SDS_32_BIT
+#  endif
+#endif
 
 /* Declare the SDS structs. They all look the same. flags is commented out
  * to avoid the non-portable #pragma pack or __attribute__((__packed__)). */
@@ -147,29 +142,22 @@ struct sdshdr##T {                                                      \
 SDS_HDR_STRUCT(8)
 SDS_HDR_STRUCT(16)
 SDS_HDR_STRUCT(32)
+#ifndef SDS_32_BIT
 SDS_HDR_STRUCT(64)
+#endif
 
 #undef SDS_HDR_STRUCT
 
-#ifndef SDS_32_BIT
-#  if UINT32_MAX == UINTPTR_MAX
-#    define SDS_32_BIT
-#  endif
-#endif
 
-#ifdef SDS_32_BIT
-#  define SDS_64_BIT_ONLY(...)
-#  define SDS_TYPE_MASK 2
-#else
-#  define SDS_64_BIT_ONLY(...) __VA_ARGS__
-#  define SDS_TYPE_MASK 3
-#endif
+#define SDS_TYPE_MASK 3
 
 enum sdshdrtype {
     SDS_TYPE_8,
     SDS_TYPE_16,
-    SDS_TYPE_32,
-    SDS_TYPE_64
+    SDS_TYPE_32
+#ifndef SDS_32_BIT
+    ,SDS_TYPE_64
+#endif
 };
 
 #define SDS_TYPE_BITS 2
@@ -178,60 +166,60 @@ enum sdshdrtype {
 
 
 /* Low level functions exposed to the user API */
-SDS_MUT_FUNC sds sdsMakeRoomFor(sds s, size_t addlen);
+SDS_MUT_FUNC SDS_EXPORT sds sdsMakeRoomFor(sds s, size_t addlen);
 enum sdsstatus {
     SDS_STATUS_NOT_CHANGED,
     SDS_STATUS_CHANGED,
     SDS_STATUS_CHANGED_TYPE
 };
-SDS_MUT_FUNC sds sdsMakeRoomForStatus(sds s_restrict s, size_t addlen, enum sdsstatus *s_restrict status /* out */);
+SDS_MUT_FUNC SDS_EXPORT sds sdsMakeRoomForStatus(sds s_restrict s, size_t addlen, enum sdsstatus *s_restrict status /* out */);
 /* Does not reallocate. It will abort on an unexpected size. */
-void sdsIncrLen(sds s, ptrdiff_t incr);
-SDS_MUT_FUNC sds sdsRemoveFreeSpace(sds s);
-SDS_CONST_FUNC size_t sdsAllocSize(sds s);
-SDS_CONST_FUNC void *sdsAllocPtr(sds s);
+SDS_EXPORT void sdsIncrLen(sds s, ptrdiff_t incr);
+SDS_MUT_FUNC SDS_EXPORT sds sdsRemoveFreeSpace(sds s);
+SDS_CONST_FUNC SDS_EXPORT size_t sdsAllocSize(sds s);
+SDS_CONST_FUNC SDS_EXPORT void *sdsAllocPtr(sds s);
 
-SDS_CONST_FUNC size_t sdslen(const sds s);
-SDS_CONST_FUNC size_t sdsalloc(const sds s);
-SDS_CONST_FUNC size_t sdsavail(const sds s);
-SDS_MUT_FUNC sds sdssetlen(sds s, size_t newlen);
-SDS_MUT_FUNC sds sdsinclen(sds s, size_t inc);
-SDS_MUT_FUNC sds sdssetalloc(sds s, size_t newlen);
+SDS_CONST_FUNC SDS_EXPORT size_t sdslen(const sds s);
+SDS_CONST_FUNC SDS_EXPORT size_t sdsalloc(const sds s);
+SDS_CONST_FUNC SDS_EXPORT size_t sdsavail(const sds s);
+SDS_MUT_FUNC SDS_EXPORT sds sdssetlen(sds s, size_t newlen);
+SDS_MUT_FUNC SDS_EXPORT sds sdsinclen(sds s, size_t inc);
+SDS_MUT_FUNC SDS_EXPORT sds sdssetalloc(sds s, size_t newlen);
 
 /* The sds version of strcmp */
-SDS_CONST_FUNC int sdscmp(const sds s1, const sds s2);
+SDS_CONST_FUNC SDS_EXPORT int sdscmp(const sds s1, const sds s2);
 
-SDS_INIT_FUNC sds sdsnewlen(const void *s_restrict init, size_t initlen);
+SDS_INIT_FUNC SDS_EXPORT sds sdsnewlen(const void *s_restrict init, size_t initlen);
 
 /* Create a new sds string starting from a null terminated C string. */
-SDS_INIT_FUNC static inline sds sdsnew(const char *s_restrict init) {
+SDS_INIT_FUNC static s_inline sds sdsnew(const char *s_restrict init) {
     size_t initlen = (init == NULL) ? 0 : strlen(init);
     return sdsnewlen(init, initlen);
 }
 
 /* Create an empty (zero length) sds string. Even in this case the string
  * always has an implicit null term. */
-SDS_INIT_FUNC static inline sds sdsempty(void) {
+SDS_INIT_FUNC static s_inline sds sdsempty(void) {
     return sdsnewlen("",0);
 }
 
 /* Duplicate an sds string. */
-SDS_INIT_FUNC static inline sds sdsdup(const sds s_restrict s) {
+SDS_INIT_FUNC static s_inline sds sdsdup(const sds s_restrict s) {
     if (s == NULL)
         return sdsnewlen("",0);
     return sdsnewlen(s, sdslen(s));
 }
 
-void sdsfree(sds s);
+SDS_EXPORT void sdsfree(sds s);
 
-SDS_MUT_FUNC sds sdsgrowzero(sds s_restrict s, size_t len);
-SDS_MUT_FUNC sds sdscatlen(sds s_restrict s, const void *s_restrict t, size_t len);
+SDS_MUT_FUNC SDS_EXPORT sds sdsgrowzero(sds s_restrict s, size_t len);
+SDS_MUT_FUNC SDS_EXPORT sds sdscatlen(sds s_restrict s, const void *s_restrict t, size_t len);
 
 /* Append the specified null termianted C string to the sds string 's'.
  *
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
-SDS_MUT_FUNC static inline sds sdscat(sds s_restrict s, const char * s_restrict t) {
+SDS_MUT_FUNC static s_inline sds sdscat(sds s_restrict s, const char *s_restrict t) {
     return sdscatlen(s, t, strlen(t));
 }
 
@@ -239,26 +227,26 @@ SDS_MUT_FUNC static inline sds sdscat(sds s_restrict s, const char * s_restrict 
  *
  * After the call, the modified sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
-SDS_MUT_FUNC static inline sds sdscatsds(sds s_restrict s, const sds s_restrict t) {
+SDS_MUT_FUNC static s_inline sds sdscatsds(sds s_restrict s, const sds s_restrict t) {
     return sdscatlen(s, t, sdslen(t));
 }
 
-SDS_MUT_FUNC sds sdscpylen(sds s_restrict s, const char *s_restrict t, size_t len);
+SDS_MUT_FUNC SDS_EXPORT sds sdscpylen(sds s_restrict s, const char *s_restrict t, size_t len);
 
 /* Like sdscpylen() but 't' must be a null-termined string so that the length
  * of the string is obtained with strlen(). */
-SDS_MUT_FUNC static inline sds sdscpy(sds s_restrict s, const char *s_restrict t) {
+SDS_MUT_FUNC static s_inline sds sdscpy(sds s_restrict s, const char *s_restrict t) {
     return sdscpylen(s, t, strlen(t));
 }
 
-SDS_PRINTF_FUNC(2,0) sds sdscatvprintf(sds s_restrict s, SDS_FMT_STR const char *s_restrict fmt,
+SDS_PRINTF_FUNC(2,0) SDS_EXPORT sds sdscatvprintf(sds s_restrict s, const char *s_restrict fmt,
                                        va_list ap);
-SDS_PRINTF_FUNC(2,3) sds sdscatprintf(sds s_restrict s, SDS_FMT_STR const char *s_restrict fmt, ...);
+SDS_PRINTF_FUNC(2,3) SDS_EXPORT sds sdscatprintf(sds s_restrict s, const char *s_restrict fmt, ...);
 
-SDS_MUT_FUNC sds sdscatfmt(sds s_restrict s, const char *s_restrict fmt, ...);
+SDS_MUT_FUNC SDS_EXPORT sds sdscatfmt(sds s_restrict s, const char *s_restrict fmt, ...);
 
-SDS_MUT_FUNC sds sdstrim(sds s_restrict s, const char *s_restrict cset);
-SDS_MUT_FUNC sds sdsrange(sds s, ptrdiff_t start, ptrdiff_t end);
+SDS_MUT_FUNC SDS_EXPORT sds sdstrim(sds s_restrict s, const char *s_restrict cset);
+SDS_MUT_FUNC SDS_EXPORT sds sdsrange(sds s, ptrdiff_t start, ptrdiff_t end);
 
 /* Set the sds string length to the length as obtained with strlen(), so
  * considering as content only up to the first null term character.
@@ -274,7 +262,7 @@ SDS_MUT_FUNC sds sdsrange(sds s, ptrdiff_t start, ptrdiff_t end);
  * The output will be "2", but if we comment out the call to sdsupdatelen()
  * the output will be "6" as the string was modified but the logical length
  * remains 6 bytes. */
-SDS_MUT_FUNC static inline sds sdsupdatelen(sds s) {
+SDS_MUT_FUNC static s_inline sds sdsupdatelen(sds s) {
     size_t reallen = strlen(s);
     return sdssetlen(s, reallen);
 }
@@ -282,47 +270,47 @@ SDS_MUT_FUNC static inline sds sdsupdatelen(sds s) {
  * However all the existing buffer is not discarded but set as free space
  * so that next append operations will not require allocations up to the
  * number of bytes previously available. */
-SDS_MUT_FUNC static inline sds sdsclear(sds s) {
+SDS_MUT_FUNC static s_inline sds sdsclear(sds s) {
     s = sdssetlen(s, 0);
     s[0] = '\0';
     return s;
 }
 
-SDS_INIT_FUNC sds *sdssplitlen(const char *s_restrict s, ptrdiff_t len, const char *s_restrict sep, int seplen, int *count);
+SDS_INIT_FUNC SDS_EXPORT sds *sdssplitlen(const char *s_restrict s, ptrdiff_t len, const char *s_restrict sep, int seplen, int *s_restrict count);
 
 /* Like sdssplitlen, but uses strlen for len and seplen. */
-SDS_INIT_FUNC static inline sds *sdssplit(const char *s_restrict s, const char *s_restrict sep, int *count) {
+SDS_INIT_FUNC static s_inline sds *sdssplit(const char *s_restrict s, const char *s_restrict sep, int *s_restrict count) {
     return sdssplitlen(s, strlen(s), sep, strlen(sep), count);
 }
 void sdsfreesplitres(sds *tokens, int count);
-SDS_MUT_FUNC sds sdstolower(sds s);
-SDS_MUT_FUNC sds sdstoupper(sds s);
+SDS_MUT_FUNC SDS_EXPORT sds sdstolower(sds s);
+SDS_MUT_FUNC SDS_EXPORT sds sdstoupper(sds s);
 
 /* Appends a single character to an sds string. */
-SDS_MUT_FUNC sds sdsaddchar(sds s, unsigned int c);
-SDS_MUT_FUNC sds sdsaddint(sds s, int value);
-SDS_MUT_FUNC sds sdsadduint(sds s, unsigned int value);
-SDS_MUT_FUNC sds sdsaddlonglong(sds s, long long value);
-SDS_MUT_FUNC sds sdsaddulonglong(sds s, unsigned long long value);
+SDS_MUT_FUNC SDS_EXPORT sds sdsaddchar(sds s, unsigned int c);
+SDS_MUT_FUNC SDS_EXPORT sds sdsaddint(sds s, int value);
+SDS_MUT_FUNC SDS_EXPORT sds sdsadduint(sds s, unsigned int value);
+SDS_MUT_FUNC SDS_EXPORT sds sdsaddlonglong(sds s, long long value);
+SDS_MUT_FUNC SDS_EXPORT sds sdsaddulonglong(sds s, unsigned long long value);
 
-SDS_INIT_FUNC sds sdsfromint(int value);
-SDS_INIT_FUNC sds sdsfromuint(unsigned int value);
-SDS_INIT_FUNC sds sdsfromlonglong(long long value);
-SDS_INIT_FUNC sds sdsfromulonglong(unsigned long long value);
+SDS_INIT_FUNC SDS_EXPORT sds sdsfromint(int value);
+SDS_INIT_FUNC SDS_EXPORT sds sdsfromuint(unsigned int value);
+SDS_INIT_FUNC SDS_EXPORT sds sdsfromlonglong(long long value);
+SDS_INIT_FUNC SDS_EXPORT sds sdsfromulonglong(unsigned long long value);
 
-SDS_MUT_FUNC sds sdscatrepr(sds s_restrict s, const char *s_restrict p, size_t len);
-SDS_INIT_FUNC sds *sdssplitargs(const char *s_restrict line, int *s_restrict argc);
-SDS_MUT_FUNC sds sdsmapchars(sds s_restrict s, const char *s_restrict from, const char *s_restrict to, size_t setlen);
-SDS_MUT_FUNC sds sdsjoin(const char **s_restrict argv, int argc, const char *s_restrict sep);
-SDS_MUT_FUNC sds sdsjoinsds(sds *s_restrict argv, int argc, const char *s_restrict sep, size_t seplen);
+SDS_MUT_FUNC SDS_EXPORT sds sdscatrepr(sds s_restrict s, const char *s_restrict p, size_t len);
+SDS_INIT_FUNC SDS_EXPORT sds *sdssplitargs(const char *s_restrict line, int *s_restrict argc);
+SDS_MUT_FUNC SDS_EXPORT sds sdsmapchars(sds s_restrict s, const char *s_restrict from, const char *s_restrict to, size_t setlen);
+SDS_MUT_FUNC SDS_EXPORT sds sdsjoin(const char **s_restrict argv, int argc, const char *s_restrict sep);
+SDS_MUT_FUNC SDS_EXPORT sds sdsjoinsds(sds *s_restrict argv, int argc, const char *s_restrict sep, size_t seplen);
 
 /* Export the allocator used by SDS to the program using SDS.
  * Sometimes the program SDS is linked to, may use a different set of
  * allocators, but may want to allocate or free things that SDS will
  * respectively free or allocate. */
-void *sds_malloc(size_t size);
-void *sds_realloc(void *ptr, size_t size);
-void sds_free(void *ptr);
+SDS_EXPORT void *sds_malloc(size_t size);
+SDS_EXPORT void *sds_realloc(void *ptr, size_t size);
+SDS_EXPORT void sds_free(void *ptr);
 
 #ifdef __cplusplus
 }
@@ -377,7 +365,7 @@ SDS_INIT_FUNC static inline sds sdsfromstdstr(const std::string &s_restrict x) {
 #elif SDSADD_TYPE == 2 /* C++ */
 /* We use overloads and type_traits for C++. */
 #include <type_traits>
-#include <limits.h>
+#include <climits>
 
 /* This struct is needed because switching overloads in a ternary
  * isn't possible without specializations and casts, and C++ doesn't
@@ -450,55 +438,43 @@ template <> struct _sdsadd_t_<true> {
 
 #elif SDSADD_TYPE == 3 /* GCC extensions */
 
-/* Generate a linker argument */
-extern sds sdsadd_bad_argument(sds);
+/* Generate a compile error. */
+extern int sdsadd_bad_argument(sds, void *);
 
 /* To make things a little nicer. We still need the mess of parentheses though. */
 #define _SDS_TYPE_CMP(x,y, true_, false_)                                   \
     __builtin_choose_expr(                                                  \
         __builtin_types_compatible_p(__typeof__(x), y), true_, false_       \
     )
-/* Both GCC and Clang love to complain about this macro, because they type
- * check disabled expressions. We have to stop it. */
 
-#define _SDSADD_WARNINGS_OFF _SDS_DIAG(push) _SDS_IGNORE("-Wunknown-pragmas")\
-    _SDS_ERROR("-Wincompatible-pointer-types") /* we want an error here */  \
-    _SDS_IGNORE("-Wint-to-pointer-cast") _SDS_IGNORE("-Wunused-variable")   \
-    _SDS_IGNORE("-Wpointer-to-int-cast") _SDS_IGNORE("-Wint-conversion")
-
-#define _SDSADD_WARNINGS_ON _SDS_DIAG(pop)
 #define _SDSADD_CHECK(s, x)                                                 \
-            (_SDS_TYPE_CMP((x), char, sdsaddchar((s), (unsigned)(x)),        \
-            _SDS_TYPE_CMP((x), const char[],                                \
-                sdscatlen((s), (const char *)(x), sizeof(x)-1),             \
-            _SDS_TYPE_CMP((x), char[],                                      \
-                sdscatlen((s), (const char *)(x), sizeof(x)-1),             \
-            _SDS_TYPE_CMP((x), const char *, sdscat((s), (const char *)(x)),\
-            _SDS_TYPE_CMP((x), char *, sdscat((s), (const char *)(x)),      \
-            _SDS_TYPE_CMP((x), int,                                         \
-                 SDS_IS_CHAR(x) ? sdsaddchar((s), (unsigned)(x))            \
-                                : sdsaddint((s), (int)(x)),                 \
+            (_SDS_TYPE_CMP((x), char, sdsaddchar,                           \
+             _SDS_TYPE_CMP((x), const char[], sdscat,                       \
+             _SDS_TYPE_CMP((x), char[], sdscat,                             \
+             _SDS_TYPE_CMP((x), const char *, sdscat,                       \
+             _SDS_TYPE_CMP((x), char *, sdscat,                             \
+             _SDS_TYPE_CMP((x), int,                                        \
+                 SDS_IS_CHAR(x) ? (sds (*)(sds,int))sdsaddchar : sdsaddint, \
             _SDS_TYPE_CMP((x), unsigned,                                    \
-                 SDS_IS_CHAR(x) ? sdsaddchar((s), (unsigned)(x))            \
-                                : sdsadduint((s), (unsigned)(x)),           \
-            _SDS_TYPE_CMP((x), long long,                                   \
-                sdsaddlonglong((s), (long long)(x)),                        \
-            _SDS_TYPE_CMP((x), unsigned long long,                          \
-                sdsaddulonglong((s), (unsigned long long)(x)),              \
-            (int)1 /* to mess up the assertion below */                     \
-        ))))))))))
+                 SDS_IS_CHAR(x) ? sdsaddchar : sdsadduint,                  \
+            _SDS_TYPE_CMP((x), long long, sdsaddlonglong,                   \
+            _SDS_TYPE_CMP((x), unsigned long long, sdsaddulonglong,         \
+            sdsadd_bad_argument /* to mess up the assertion below */        \
+        )))))))))((s), (x)))
+
 #define sdsadd(s, x) __extension__({                                        \
-    _SDSADD_WARNINGS_OFF                                                    \
         /* If an invalid option is used above, _s2 will be int and          \
          * sdsadd_invalid_type would expand to a negative array. */         \
-    __attribute__((__unused__)) extern char sdsadd_invalid_type[                                    \
+    __attribute__((__unused__)) extern char sdsadd_invalid_type[            \
             (2 * !!__builtin_types_compatible_p(                            \
-                __typeof__(_SDSADD_CHECK(s,x)), sds)) - 1  \
+                __typeof__(_SDSADD_CHECK(s,x)), sds)) - 1                   \
         ];                                                                  \
-    _SDSADD_CHECK(s, x);                                                                     \
-    _SDSADD_WARNINGS_ON                                                     \
+    _SDSADD_CHECK(s, x);                                                    \
 })
 #else /* Not supported */
-#define sdsadd(s, x) do { char sdsadd_not_supported_in_this_compiler[-1]; } while (0)
+#define sdsadd(s, x) sdsadd_not_supported_in_this_compiler[-1];
 #endif /* sdsadd macros */
+
+#undef sds
+
 #endif
