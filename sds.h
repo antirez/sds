@@ -354,12 +354,9 @@ SDS_INIT_FUNC static inline sds sdsfromstdstr(const std::string &s_restrict x) {
 #    define SDSADD_TYPE 1 /* _Generic */
 #  elif defined(__cplusplus) && __cplusplus >= 201103L
 #    define SDSADD_TYPE 2 /* C++ overload/type_traits */
-#  elif !defined(__cplusplus) && (defined(__clang__) || defined(__GNUC__))
-#    if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 2)))
-#      define SDSADD_TYPE 3
-#    else
-#      define SDSADD_TYPE 0
-#    endif
+   /* GCC 3.2 and all Clang versions support type 3. */
+#  elif !defined(__cplusplus) && (defined(__clang__) || (defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 2))))
+#    define SDSADD_TYPE 3
 #  else
 #    define SDSADD_TYPE 0 /* not supported */
 #  endif
