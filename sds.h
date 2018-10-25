@@ -120,7 +120,8 @@ extern "C" {
         abort();                                                        \
     } while (0)
 #else
-#  if defined(__GNUC__) || defined(__clang__)
+   /* Clang 3.0 (or earlier?) and GCC 4.5.0 added __builtin_unreachable */
+#  if (defined(__clang__) && __clang_version_major__ >= 3) || (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)))
 #    define SDS_UNREACHABLE(...) __builtin_unreachable(); return __VA_ARGS__
 #  else
 #    define SDS_UNREACHABLE(...) return __VA_ARGS__
@@ -463,7 +464,7 @@ extern sds sdsadd_bad_argument(sds);
 /* Both GCC and Clang love to complain about this macro, because they type
  * check disabled expressions. We have to stop it. */
 
-#define _SDSADD_WARNINGS_OFF _SDS_DIAG(push) _SDS_IGNORE("-Wpragmas")       \
+#define _SDSADD_WARNINGS_OFF _SDS_DIAG(push) _SDS_IGNORE("-Wunknown-pragmas")\
     _SDS_ERROR("-Wincompatible-pointer-types") /* we want an error here */  \
     _SDS_IGNORE("-Wint-to-pointer-cast") _SDS_IGNORE("-Wunused-variable")   \
     _SDS_IGNORE("-Wpointer-to-int-cast") _SDS_IGNORE("-Wint-conversion")
