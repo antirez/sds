@@ -38,6 +38,7 @@
 #else
 #include <limits.h>
 #endif
+#include <stdlib.h>
 
 #include "testhelp.h"
 #include "sds.h"
@@ -46,22 +47,23 @@
  * sdscatvprintf buffer. */
 
 /* https://www.lipsum.com - about 1024 bytes */
-#define LOREM_IPSUM                                                              \
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut in quam porta, "\
-    "ornare nibh nec, faucibus enim. Cras sit amet mi ante. Suspendisse vel "    \
-    "gravida magna. Curabitur hendrerit sem quis blandit laoreet. Donec vitae "  \
-    "nibh in ipsum vulputate dignissim vitae non nunc. Suspendisse tristique, "  \
-    "nunc quis ornare venenatis, lectus massa fringilla magna, eu eleifend "     \
-    "metus sem vel sapien. Maecenas egestas non ipsum id auctor. Nunc ornare "   \
-    "vitae tellus tincidunt luctus. Mauris sagittis euismod dapibus. Phasellus " \
-    "at ligula dui. Quisque ullamcorper laoreet malesuada. Integer dapibus, "    \
-    "nulla a tincidunt placerat, tortor elit malesuada turpis, a maximus ante "  \
-    "nisl sit amet eros. Proin vitae pretium ex, sit amet gravida nulla. "       \
-    "Phasellus pulvinar justo vitae lacus dapibus fermentum.\n\n"                \
-    "Mauris ut sapien sit amet purus fringilla tincidunt. Integer a interdum "   \
-    "velit. Fusce suscipit odio vitae nulla varius, a auctor neque elementum. "  \
-    "Morbi at libero sed orci interdum auctor a vitae tortor. Mauris lacinia "   \
-    "eget ex vitae viverra. "
+#define LOREM_IPSUM                                                        \
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut in quam " \
+    "porta, ornare nibh nec, faucibus enim. Cras sit amet mi ante. "       \
+    "Suspendisse vel gravida magna. Curabitur hendrerit sem quis blandit " \
+    "laoreet. Donec vitae nibh in ipsum vulputate dignissim vitae non "    \
+    "nunc. Suspendisse tristique, nunc quis ornare venenatis, lectus "     \
+    "massa fringilla magna, eu eleifend metus sem vel sapien. Maecenas "   \
+    "egestas non ipsum id auctor. Nunc ornare vitae tellus tincidunt "     \
+    "luctus. Mauris sagittis euismod dapibus. Phasellus at ligula dui. "   \
+    "Quisque ullamcorper laoreet malesuada. Integer dapibus, nulla a "     \
+    "tincidunt placerat, tortor elit malesuada turpis, a maximus ante "    \
+    "nisl sit amet eros. Proin vitae pretium ex, sit amet gravida nulla. " \
+    "Phasellus pulvinar justo vitae lacus dapibus fermentum.\n\n"          \
+    "Mauris ut sapien sit amet purus fringilla tincidunt. Integer a "      \
+    "interdum velit. Fusce suscipit odio vitae nulla varius, a auctor "    \
+    "neque elementum. Morbi at libero sed orci interdum auctor a vitae "   \
+    "tortor. Mauris lacinia eget ex vitae viverra. "
 
 /* Make it longer. Don't cross the 4095 limit, though. */
 static const char reallyLongString[] = LOREM_IPSUM LOREM_IPSUM LOREM_IPSUM LOREM_IPSUM;
@@ -71,25 +73,25 @@ static int sdsTest(void) {
     sds x = sdsnew("foo"), y;
 
     test_cond("Create a string and obtain the length",
-        sdslen(x) == 3 && memcmp(x,"foo\0",4) == 0)
+        sdslen(x) == 3 && memcmp(x, "foo\0", 4) == 0)
 
     sdsfree(x);
-    x = sdsnewlen("foo",2);
+    x = sdsnewlen("foo", 2);
     test_cond("Create a string with specified length",
-        sdslen(x) == 2 && memcmp(x,"fo\0",3) == 0)
+        sdslen(x) == 2 && memcmp(x, "fo\0", 3) == 0)
 
-    x = sdscat(x,"bar");
+    x = sdscat(x, "bar");
     test_cond("Strings concatenation",
-        sdslen(x) == 5 && memcmp(x,"fobar\0",6) == 0);
+        sdslen(x) == 5 && memcmp(x, "fobar\0", 6) == 0);
 
-    x = sdscpy(x,"a");
+    x = sdscpy(x, "a");
     test_cond("sdscpy() against an originally longer string",
-        sdslen(x) == 1 && memcmp(x,"a\0",2) == 0)
+        sdslen(x) == 1 && memcmp(x, "a\0", 2) == 0)
 
     x = sdscpy(x, reallyLongString);
     test_cond("sdscpy() against an originally shorter string",
         sdslen(x) == reallyLongStringLen &&
-        memcmp(x,reallyLongString,reallyLongStringLen + 1) == 0)
+        memcmp(x, reallyLongString, reallyLongStringLen + 1) == 0)
 
     x = sdsclear(x);
     test_cond("sdsclear() properly clears a string",
@@ -108,9 +110,14 @@ static int sdsTest(void) {
 
     sdsfree(x);
 
-    x = sdscatprintf(sdsempty(),"%d",123);
+    x = sdsnew("hi");
+    x = sdsinclen(x, 40000);
+    test_cond("sdsinclen works", sdslen(x) == 40002);
+
+    sdsfree(x);
+    x = sdscatprintf(sdsempty(), "%d", 123);
     test_cond("sdscatprintf() seems working in the base case",
-        sdslen(x) == 3 && memcmp(x,"123\0",4) == 0)
+        sdslen(x) == 3 && memcmp(x, "123\0", 4) == 0)
 
     sdsfree(x);
     x = sdscatprintf(sdsempty(), "%s", reallyLongString);
@@ -120,7 +127,7 @@ static int sdsTest(void) {
 
     sdsfree(x);
     x = sdsnew("--");
-    x = sdscatfmt(x, "Hello %s World %I,%I--", "Hi!", LLONG_MIN,LLONG_MAX);
+    x = sdscatfmt(x, "Hello %s World %I,%D--", "Hi!", LLONG_MIN, LLONG_MAX);
     test_cond("sdscatfmt() seems working in the base case",
         sdslen(x) == 60 &&
         memcmp(x,"--Hello Hi! World -9223372036854775808,"
@@ -132,8 +139,14 @@ static int sdsTest(void) {
     x = sdscatfmt(x, "%u,%U--", UINT_MAX, ULLONG_MAX);
     test_cond("sdscatfmt() seems working with unsigned numbers",
         sdslen(x) == 35 &&
-        memcmp(x,"--4294967295,18446744073709551615--",35) == 0)
+        memcmp(x, "--4294967295,18446744073709551615--", 35) == 0)
 
+    sdsfree(x);
+    x = sdsnew("--");
+    x = sdscatfmt(x, "%x,%X--", UINT_MAX, ULLONG_MAX);
+    test_cond("sdscatfmt() seems working with hex numbers",
+        sdslen(x) == 29 &&
+        memcmp(x, "--FFFFFFFF,FFFFFFFFFFFFFFFF--", 29) == 0)
 
     sdsfree(x);
     x = sdscatfmt(sdsempty(), "%s", reallyLongString);
@@ -143,44 +156,45 @@ static int sdsTest(void) {
 
     sdsfree(x);
     x = sdsnew(" x ");
-    x = sdstrim(x," x");
+    x = sdstrim(x, " x");
     test_cond("sdstrim() works when all chars match",
         sdslen(x) == 0)
 
     sdsfree(x);
     x = sdsnew(" x ");
-    x = sdstrim(x," ");
+    x = sdstrim(x, " ");
     test_cond("sdstrim() works when a single char remains",
         sdslen(x) == 1 && x[0] == 'x')
 
+    
     sdsfree(x);
     x = sdsnew("xxciaoyyy");
-    x = sdstrim(x,"xy");
+    x = sdstrim(x, "xy");
     test_cond("sdstrim() correctly trims characters",
-        sdslen(x) == 4 && memcmp(x,"ciao\0",5) == 0)
+        sdslen(x) == 4 && memcmp(x, "ciao\0", 5) == 0)
 
     y = sdsdup(x);
     y = sdsrange(y,1,1);
     test_cond("sdsrange(...,1,1)",
-        sdslen(y) == 1 && memcmp(y,"i\0",2) == 0)
+        sdslen(y) == 1 && memcmp(y, "i\0", 2) == 0)
 
     sdsfree(y);
     y = sdsdup(x);
-    y = sdsrange(y,1,-1);
+    y = sdsrange(y, 1, -1);
     test_cond("sdsrange(...,1,-1)",
-        sdslen(y) == 3 && memcmp(y,"iao\0",4) == 0)
+        sdslen(y) == 3 && memcmp(y, "iao\0", 4) == 0)
 
     sdsfree(y);
     y = sdsdup(x);
-    y = sdsrange(y,-2,-1);
+    y = sdsrange(y, -2, -1);
     test_cond("sdsrange(...,-2,-1)",
-        sdslen(y) == 2 && memcmp(y,"ao\0",3) == 0)
+        sdslen(y) == 2 && memcmp(y, "ao\0", 3) == 0)
 
     sdsfree(y);
     y = sdsdup(x);
-    y = sdsrange(y,2,1);
+    y = sdsrange(y, 2, 1);
     test_cond("sdsrange(...,2,1)",
-        sdslen(y) == 0 && memcmp(y,"\0",1) == 0)
+        sdslen(y) == 0 && memcmp(y, "\0", 1) == 0)
 
     sdsfree(y);
     y = sdsdup(x);
@@ -198,21 +212,39 @@ static int sdsTest(void) {
     sdsfree(x);
     x = sdsnew("foo");
     y = sdsnew("foa");
-    test_cond("sdscmp(foo,foa)", sdscmp(x,y) > 0)
+    test_cond("sdscmp(foo,foa)", sdscmp(x, y) > 0)
 
     sdsfree(y);
     sdsfree(x);
     x = sdsnew("bar");
     y = sdsnew("bar");
-    test_cond("sdscmp(bar,bar)", sdscmp(x,y) == 0)
+    test_cond("sdscmp(bar,bar)", sdscmp(x, y) == 0)
 
     sdsfree(y);
     sdsfree(x);
     x = sdsnew("aar");
     y = sdsnew("bar");
-    test_cond("sdscmp(bar,bar)", sdscmp(x,y) < 0)
+    test_cond("sdscmp(bar,bar)", sdscmp(x, y) < 0)
 
     sdsfree(y);
+    sdsfree(x);
+
+    {
+        /* Use volatile to avoid optimizations */
+        volatile char *s = (volatile char *)malloc(10);
+        s[0] = 'h';
+        s[1] = 'e';
+        s[2] = 'l';
+        s[3] = 'l';
+        s[4] = 'o';
+        s[5] = '\0';
+        x = sdsnew((const char *)s);
+        test_cond("sdsnew on malloced string",
+            sdslen(x) == 5 && memcmp(x, "hello\0", 6) == 0)
+
+        free((void *)s);
+    }
+
     sdsfree(x);
     x = sdsnewlen("\a\n\0foo\r",7);
     y = sdscatrepr(sdsempty(),x,sdslen(x));
@@ -233,20 +265,36 @@ static int sdsTest(void) {
          * SDS header types. */
         for (i = 0; i < 10; i++) {
             size_t oldlen = sdslen(x);
-            x = sdsMakeRoomFor(x,step);
+            x = sdsMakeRoomFor(x, step);
 
             test_cond("sdsMakeRoomFor() len", sdslen(x) == oldlen);
             test_cond("sdsMakeRoomFor() free", sdsavail(x) >= step);
-            p = x+oldlen;
+            p = x + oldlen;
             for (j = 0; j < step; j++) {
-                p[j] = 'A'+j;
+                p[j] = 'A' + j;
             }
-            sdsIncrLen(x,step);
+            sdsIncrLen(x, step);
         }
         test_cond("sdsMakeRoomFor() content",
             memcmp("0ABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJABCDEFGHIJ",x,101) == 0);
-        test_cond("sdsMakeRoomFor() final length",sdslen(x)==101);
+        test_cond("sdsMakeRoomFor() final length", sdslen(x) == 101);
 
+        sdsfree(x);
+    }
+    {
+        size_t i = 0;
+        x = sdsempty();
+        x = sdsgrowzero(x, reallyLongStringLen + 1);
+        test_cond("sdsgrowzero gives us space", sdsavail(x) >= reallyLongStringLen);
+        test_cond("sdsgrowzero gives us zeroes",
+              memcmp("\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+                     "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", x, 40) == 0
+              && x[reallyLongStringLen] == '\0');
+        for (i= 0; i < reallyLongStringLen; i++) {
+           x[i] = reallyLongString[i];
+        }
+        x = sdsupdatelen(x);
+        test_cond("sdsupdatelen works", sdslen(x) == reallyLongStringLen);
         sdsfree(x);
     }
 
@@ -341,6 +389,13 @@ static int sdsTest(void) {
 
     sdsfree(x);
 
+    x = sdsnew("*");
+    x = sdsaddhex(x, ULLONG_MAX);
+    test_cond("whether sdsaddhex adds big unsigned numbers properly",
+        strcmp(x, "*FFFFFFFFFFFFFFFF") == 0)
+
+    sdsfree(x);
+
 #if SDSADD_TYPE != 0
     if (SDSADD_TYPE == 1)        /* C11 */
         puts("Testing sdsadd's C11 _Generic implementation...");
@@ -372,7 +427,7 @@ static int sdsTest(void) {
     test_cond("whether sdsadd properly detects (char)52 as a char literal",
         strcmp(x, "1234") == 0)
     {
-        char c = '4';
+        const char c = '4';
 
         sdsfree(x);
         x = sdsnew("123");
@@ -389,9 +444,9 @@ static int sdsTest(void) {
 
     sdsfree(x);
     x = sdsnew("*");
-    x = sdsadd(x, LLONG_MAX);
+    x = sdsadd(x, LLONG_MIN);
     test_cond("whether sdsadd adds big signed numbers properly",
-        strcmp(x, "*9223372036854775807") == 0)
+        strcmp(x, "*-9223372036854775808") == 0)
 
     sdsfree(x);
     x = sdsnew("*");
