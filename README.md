@@ -15,6 +15,39 @@ is a faster version of `sdscatprintf` that can be used for the simpler
 cases in order to avoid the libc `printf` family functions performance
 penalty.
 
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
+**Table of Contents**
+
+- [Simple Dynamic Strings](#simple-dynamic-strings)
+- [How SDS strings work](#how-sds-strings-work)
+- [Advantages and disadvantages of SDS](#advantages-and-disadvantages-of-sds)
+- [SDS basics](#sds-basics)
+    - [Creating SDS strings](#creating-sds-strings)
+    - [Obtaining the string length](#obtaining-the-string-length)
+    - [Destroying strings](#destroying-strings)
+    - [Concatenating strings](#concatenating-strings)
+    - [Formatting strings](#formatting-strings)
+    - [Fast number to string operations](#fast-number-to-string-operations)
+    - [Trimming strings and getting ranges](#trimming-strings-and-getting-ranges)
+    - [String copying](#string-copying)
+    - [Quoting strings](#quoting-strings)
+    - [Tokenization](#tokenization)
+    - [Command line oriented tokenization](#command-line-oriented-tokenization)
+    - [String joining](#string-joining)
+    - [Error handling](#error-handling)
+- [SDS internals and advanced usage](#sds-internals-and-advanced-usage)
+    - [Shrinking strings](#shrinking-strings)
+    - [Manual modifications of SDS strings](#manual-modifications-of-sds-strings)
+    - [Sharing SDS strings](#sharing-sds-strings)
+    - [Interactions with heap checkers](#interactions-with-heap-checkers)
+    - [Zero copy append from syscalls](#zero-copy-append-from-syscalls)
+- [Embedding SDS into your project](#embedding-sds-into-your-project)
+- [Using a different allocator for SDS](#using-a-different-allocator-for-sds)
+- [Credits and license](#credits-and-license)
+
+<!-- markdown-toc end -->
+
+
 How SDS strings work
 ===
 
