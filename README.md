@@ -15,7 +15,6 @@ is a faster version of `sdscatprintf` that can be used for the simpler
 cases in order to avoid the libc `printf` family functions performance
 penalty.
 
-<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
 - [Simple Dynamic Strings](#simple-dynamic-strings)
@@ -44,9 +43,6 @@ penalty.
 - [Embedding SDS into your project](#embedding-sds-into-your-project)
 - [Using a different allocator for SDS](#using-a-different-allocator-for-sds)
 - [Credits and license](#credits-and-license)
-
-<!-- markdown-toc end -->
-
 
 How SDS strings work
 ===
