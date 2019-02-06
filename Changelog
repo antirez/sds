@@ -1,3 +1,30 @@
+Version 3.0 (in progress)
+===
+
+* sdsadd macro lets you easily add integers, character literals, and strings
+  if sds is compiled with a compiler that supports C++11, C11's _Generic, or
+  GCC/Clang's __builtin_types_compatible_p and __builtin_check_expr.
+* C++11 compatibility
+* Performance improvements, especially for 32-bit which can convert numbers
+  to strings up to 10x faster than before.
+* Tests are in a separate file now, and there are more of them
+* GCC and Clang will warn on not taking the return value of an sds function.
+* All functions that modify sds strings will now return itself, reallocating
+  if needed. This makes things futureproof at the cost of breaking binary
+  compatibility with v2.0.
+* Restrict pointers.
+* Defining SDS_ABORT_ON_ERROR will change sds's behavior on an error. Instead
+  of returning a NULL sds string, it will abort, giving the line of the error.
+* The mini SDS_TYPE_5 string has been removed. The different layout requires
+  unusual treatment and more checks, and by requiring a promotion to
+  SDS_TYPE_8 rather quickly, it offsets the 2 byte benefit.
+* With the removal of SDS_TYPE_5, it allow us to make a lambda macro to easily
+  modify the sds headers.
+* sdsaddchar, sdsaddint, sdsadduint, sdsaddlonglong, sdsaddulonglong, and
+  sdsaddstdstr (C++) have been added, as well as helper functions which
+  create an sds instead of add (sdsfromx, same as above except sdsaddchar)
+* sdsjoin wraps sdsjoinlen with strlen calls.
+
 Version 2.0
 ===
 

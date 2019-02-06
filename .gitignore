@@ -1,1 +1,6 @@
 sds-test
+sds-test.exe
+sds-test-*
+*.o
+.DS_Store
+

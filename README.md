@@ -307,6 +307,93 @@ printf("%s\n', s);
 output> Hello!
 ```
 
+Adding other items to strings (sdsadd)
+---
+
+Adding other things to strings is also easy.
+
+If you have a supported compiler (C++11, C11, GCC 3.2+, Clang), you don't
+have to remember these functions. Instead, you can use the magic `sdsadd` macro:
+
+```c
+int i = 133;
+char c = '!';
+const char *str = "world";
+sds s = sdsempty();
+s = sdsadd(s, "Hello,");
+s = sdsadd(s, ' ');
+s = sdsadd(s, str);
+s = sdsadd(s, c);
+s = sdsadd(s, (char)10);
+s = sdsadd(s, i);
+s = sdsadd(s, '0' + 7);
+
+printf("%s\n", s);
+
+output> "Hello, world!
+1337
+```
+
+`sdsadd` is like the `+=` operator you see in Java/JavaScript/Ruby/`std::string`/`QString`
+and it currently supports the following:
+
+* Strings (note: Adding sds strings is not recommended. It has to call strlen)
+* Integers
+* `char` literals* (see below)
+* std::string (C++ only)
+
+**Note:** `sdsadd` does its best to detect `char` literals, but its detection isn't perfect.
+Because of `int` promotion, it is impossible to detect all `char` literals, so
+It will only detect if it is explicitly declared as, or cast to, `char`, or if the
+second argument to the macro, when stringified, starts or ends with a single quote.
+
+```c
+char h = 'h';
+sdsadd(s, h);          // ok
+sdsadd(s, 'c');        // ok
+sdsadd(s, '0' + d);    // ok
+sdsadd(s, d + '0');    // ok
+sdsadd(s, (char)57);   // ok
+
+const char *str = "hi";
+sdsadd(s, *str);       // ok
+sdsadd(s, str[1]);     // ok
+```
+It does not match these:
+
+```c
+int c = 'c';
+sdsadd(s, c);          // not ok
+sdsadd(s, ('0' + d));  // not ok
+sdsadd(s, 1+'0'+1);    // not ok
+
+int8_t I = 'I'; // (or uint8_t, signed char, unsigned char)
+sdsadd(s, I);          // don't rely on it
+sdsadd(s, (char)I);    // ok
+```
+It does have one kind of false positive:
+
+```c
+sdsadd(s, (int)'h');   // not ok
+```
+Just wrap it with parentheses or use a direct `sdsaddint` call to fix it.
+
+```c
+sdsadd(s, (int)('h')); // ok
+sdsaddint(s, 'h');     // ok
+```
+
+Even if you don't have a supported compiler, sds supplies these functions:
+
+```c
+sds sdsaddchar(sds s, unsigned int c);
+sds sdsaddint(sds s, int value);
+sds sdsadduint(sds s, unsigned value);
+sds sdsaddlonglong(sds s, long long value);
+sds sdsaddulonglong(sds s, unsigned long long value);
+sds sdsaddstdstr(sds s, const std::string &x); /* C++ only */
+```
+
 Formatting strings
 ---
 
@@ -355,7 +442,10 @@ kind of programs, and while you may do this with `sdscatprintf` the performance
 hit is big, so SDS provides a specialized function.
 
 ```c
+sds sdsfromint(int value);
+sds sdsfromuint(unsigned value);
 sds sdsfromlonglong(long long value);
+sds sdsfromulonglong(unsigned long long value);
 ```
 
 Use it like this:
@@ -366,6 +456,8 @@ printf("%d\n", (int) sdslen(s));
 
 output> 5
 ```
+
+or use the `sdsadd` macro if your compiler supports it.
 
 Trimming strings and getting ranges
 ---
@@ -583,6 +675,7 @@ strings it is composed of, so SDS provides a function that returns an
 array of SDS strings given a string and a separator.
 
 ```c
+sds *sdssplit(const char *s, const char *sep, int *count);
 sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count);
 void sdsfreesplitres(sds *tokens, int count);
 ```
@@ -889,8 +982,21 @@ project:
 * sds.h
 * sdsalloc.h
 
-The source code is small and every C99 compiler should deal with
+The source code is small and every C++11 or C99 compiler should deal with
 it without issues.
+
+For the sdsadd macro, any of the following are compatible:
+
+* A C11 compiler supporting `_Generic`
+* A C++11 compiler supporting `<type_traits>`
+* GCC 4.9 or newer with extensions enabled
+* Clang 3.8 or newer with extensions enabled
+
+To manually enable sdsadd, define one of the following:
+* `SDSADD_TYPE=0`: Disabled
+* `SDSADD_TYPE=1`: `_Generic`
+* `SDSADD_TYPE=2`: `<type_traits>`
+* `SDSADD_TYPE=3`: GCC/Clang extensions
 
 Using a different allocator for SDS
 ===
