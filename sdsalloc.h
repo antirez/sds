@@ -40,3 +40,8 @@
 #define s_malloc malloc
 #define s_realloc realloc
 #define s_free free
+
+/* GCC:  Incorrect warning about empty translation units
+ * when using pre-compiled headers,
+ * (See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64502). */
+typedef int sdsvoid;

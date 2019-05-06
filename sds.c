@@ -1266,6 +1266,7 @@ int sdsTest(void) {
                 if (type != SDS_TYPE_5) {
                     test_cond("sdsMakeRoomFor() free", sdsavail(x) >= step);
                     oldfree = sdsavail(x);
+                    (void) oldfree;
                 }
                 p = x+oldlen;
                 for (j = 0; j < step; j++) {
