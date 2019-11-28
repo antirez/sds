@@ -520,34 +520,36 @@ sds sdsfromlonglong(long long value) {
 
 /* Like sdscatprintf() but gets va_list instead of being variadic. */
 sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
+    int size;
     va_list cpy;
-    char staticbuf[1024], *buf = staticbuf, *t;
-    size_t buflen = strlen(fmt)*2;
+    char staticbuf[1024], * buf, * t;
+
+    /* Determine required size */
+    va_copy(cpy, ap);
+    size = vsnprintf(NULL, 0, fmt, cpy);
+    va_end(cpy);
+
+    if (size < 0) return NULL;
+
+    /* For '\0' */
+    size++;
 
     /* We try to start using a static buffer for speed.
      * If not possible we revert to heap allocation. */
-    if (buflen > sizeof(staticbuf)) {
-        buf = s_malloc(buflen);
-        if (buf == NULL) return NULL;
+    if (size > sizeof(staticbuf)) {
+        buf = s_malloc(size);
+        if (buf == NULL) return NULL;        
     } else {
-        buflen = sizeof(staticbuf);
+        buf = staticbuf;
     }
 
-    /* Try with buffers two times bigger every time we fail to
-     * fit the string in the current buffer size. */
-    while(1) {
-        buf[buflen-2] = '\0';
-        va_copy(cpy,ap);
-        vsnprintf(buf, buflen, fmt, cpy);
-        va_end(cpy);
-        if (buf[buflen-2] != '\0') {
-            if (buf != staticbuf) s_free(buf);
-            buflen *= 2;
-            buf = s_malloc(buflen);
-            if (buf == NULL) return NULL;
-            continue;
-        }
-        break;
+    va_copy(cpy, ap);
+    size = vsnprintf(buf, size, fmt, cpy);
+    va_end(ap);
+
+    if (size < 0) {
+        if (buf != staticbuf) s_free(buf);
+        return NULL;
     }
 
     /* Finally concat the obtained string to the SDS string and return it. */
@@ -565,7 +567,7 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
  * Example:
  *
  * s = sdsnew("Sum is: ");
- * s = sdscatprintf(s,"%d+%d = %d",a,b,a+b).
+ * s = sdscatprintf(s,"%d+%d = %d",a,b,a+b);
  *
  * Often you need to create a string from scratch with the printf-alike
  * format. When this is the need, just use sdsempty() as the target string:
