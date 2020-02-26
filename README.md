@@ -612,7 +612,7 @@ output> World!
 
 The returned array is heap allocated, and the single elements of the array
 are normal SDS strings. You can free everything calling `sdsfreesplitres`
-as in the example. Alternativey you are free to release the array yourself
+as in the example. Alternatively you are free to release the array yourself
 using the `free` function and use and/or free the individual SDS strings
 as usually.
 
