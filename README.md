@@ -662,7 +662,7 @@ There are two functions doing the reverse of tokenization by joining strings
 into a single one.
 
 ```c
-sds sdsjoin(char **argv, int argc, char *sep, size_t seplen);
+sds sdsjoin(char **argv, int argc, char *sep);
 sds sdsjoinsds(sds *argv, int argc, const char *sep, size_t seplen);
 ```
 
@@ -677,7 +677,7 @@ able to deal with binary data.
 
 ```c
 char *tokens[3] = {"foo","bar","zap"};
-sds s = sdsjoin(tokens,3,"|",1);
+sds s = sdsjoin(tokens,3,"|");
 printf("%s\n", s);
 
 output> foo|bar|zap
