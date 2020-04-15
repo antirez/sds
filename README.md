@@ -148,6 +148,7 @@ sds sdsnewlen(const void *init, size_t initlen);
 sds sdsnew(const char *init);
 sds sdsempty(void);
 sds sdsdup(const sds s);
+sds sdsscan(void);
 ```
 
 There are many ways to create SDS strings:
@@ -190,6 +191,17 @@ type. You can use the right `printf` specifier instead of casting.
     printf("%s %s\n", s1, s2);
 
     output> Hello Hello
+    ```
+
+* The `sdsscan()` functions takes a string input (a line) from stdin and returns an SDS string:
+
+    ```c
+    sds string = sdsscan();
+    printf(string);
+
+    input> Hello, World!
+
+    output> Hello, World!
     ```
 
 Obtaining the string length
