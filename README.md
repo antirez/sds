@@ -842,7 +842,7 @@ struct mySharedString {
 ```
 
 When new strings are created, the structure is allocated and returned with
-`refcount` set to 1. The you have two functions to change the reference count
+`refcount` set to 1. Then you have two functions to change the reference count
 of the shared string:
 
 * `incrementStringRefCount` will simply increment `refcount` of 1 in the structure. It will be called every time you add a reference to the string on some new data structure, variable, or whatever.
