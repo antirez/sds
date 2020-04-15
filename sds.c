@@ -191,6 +191,7 @@ void sdsupdatelen(sds s) {
  * so that next append operations will not require allocations up to the
  * number of bytes previously available. */
 void sdsclear(sds s) {
+    if (s == NULL) return;
     sdssetlen(s, 0);
     s[0] = '\0';
 }
@@ -396,7 +397,9 @@ sds sdsgrowzero(sds s, size_t len) {
  * references must be substituted with the new pointer returned by the call. */
 sds sdscatlen(sds s, const void *t, size_t len) {
     size_t curlen = sdslen(s);
-
+    if (s == NULL || t == NULL) {
+        return NULL;
+    }
     s = sdsMakeRoomFor(s,len);
     if (s == NULL) return NULL;
     memcpy(s+curlen, t, len);
@@ -410,6 +413,9 @@ sds sdscatlen(sds s, const void *t, size_t len) {
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
 sds sdscat(sds s, const char *t) {
+    if (s == NULL || t == NULL) {
+        return NULL;
+    }
     return sdscatlen(s, t, strlen(t));
 }
 
@@ -424,6 +430,12 @@ sds sdscatsds(sds s, const sds t) {
 /* Destructively modify the sds string 's' to hold the specified binary
  * safe string pointed by 't' of length 'len' bytes. */
 sds sdscpylen(sds s, const char *t, size_t len) {
+    if (s == NULL) {
+        return NULL;
+    }
+    if (t == NULL) {
+        return (s != NULL) ? s : NULL;
+    }
     if (sdsalloc(s) < len) {
         s = sdsMakeRoomFor(s,len-sdslen(s));
         if (s == NULL) return NULL;
@@ -437,6 +449,12 @@ sds sdscpylen(sds s, const char *t, size_t len) {
 /* Like sdscpylen() but 't' must be a null-termined string so that the length
  * of the string is obtained with strlen(). */
 sds sdscpy(sds s, const char *t) {
+    if (s == NULL) {
+        return NULL;
+    }
+    if (t == NULL) {
+        return (s != NULL) ? s : NULL;
+    }
     return sdscpylen(s, t, strlen(t));
 }
 
@@ -708,7 +726,12 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
 sds sdstrim(sds s, const char *cset) {
     char *start, *end, *sp, *ep;
     size_t len;
-
+    if (s == NULL) {
+        return NULL;
+    }
+    if (cset == NULL) {
+        return (s != NULL) ? s : NULL;
+    }
     sp = start = s;
     ep = end = s+sdslen(s)-1;
     while(sp <= end && strchr(cset, *sp)) sp++;
@@ -738,7 +761,6 @@ sds sdstrim(sds s, const char *cset) {
  */
 void sdsrange(sds s, ssize_t start, ssize_t end) {
     size_t newlen, len = sdslen(s);
-
     if (len == 0) return;
     if (start < 0) {
         start = len+start;
@@ -822,7 +844,7 @@ sds *sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *c
     long start = 0, j;
     sds *tokens;
 
-    if (seplen < 1 || len < 0) return NULL;
+    if (s == NULL || count == NULL || seplen < 1 || len < 0) return NULL;
 
     tokens = s_malloc(sizeof(sds)*slots);
     if (tokens == NULL) return NULL;
@@ -1287,7 +1309,67 @@ int sdsTest(void) {
 
             sdsfree(x);
         }
+
+        /* Things here can't explode otherwise you will know. */
+        y = sdsnew("(null)");
+
+        x = sdscat(y, NULL);
+        test_cond("sdscat(y, NULL) returns NULL", x == NULL);
+
+        x = sdscat(NULL, y);
+        test_cond("sdscat(NULL, y) returns NULL", x == NULL);
+
+        x = sdscpy(NULL, NULL);
+        test_cond("sdscpy(NULL, NULL) returns NULL", x == NULL);
+
+        x = sdscpy(y, NULL);
+        test_cond("sdscpy(y, NULL) returns y", x == y);
+
+        x = sdscpy(NULL, y);
+        test_cond("sdscpy(NULL, y) returns NULL", x == NULL);
+
+        x = sdstrim(y, NULL);
+        test_cond("sdstrim(y, NULL) returns y", x == y);
+
+        x = sdstrim(NULL, " ");
+        test_cond("sdstrim(NULL, \" \") returns NULL", x == NULL);
+
+        x = sdstrim(NULL, NULL);
+        test_cond("sdstrim(NULL, NULL) returns NULL", x == NULL);
+
+        sdsrange(NULL, 1, -1);
+        test_cond("sdsrange(NULL, 1, -1) can't explode", 1 != 0);
+
+        sdstolower(NULL);
+        test_cond("sdstolower(NULL) can't explode", 1 != 0);
+
+        sdstoupper(NULL);
+        test_cond("sdstoupper(NULL) can't explode", 1 != 0);
+
+        sdslen(NULL);
+        test_cond("sdslen(NULL) can't explode", 1 != 0);
+
+        test_cond("sdscmp(NULL, y) == -sdslen(y)", sdscmp(NULL, y) == -sdslen(y));
+
+        test_cond("sdscmp(y, NULL) == -sdslen(y)", sdscmp(y, NULL) == sdslen(y));
+
+        test_cond("sdscmp(NULL, NULL) == 0", sdscmp(NULL, NULL) == 0);
+
+        sdssplitlen(NULL, 1, ",", 1, (int *)0xdeadbeef);
+        test_cond("sdssplitlen(NULL, 1, \",\", 1, (int *)0xdeadbeef) can't explode", 0 != 1);
+
+        sdssplitlen("a", 1, ",", 1, NULL);
+        test_cond("sdssplitlen(\"a\", 1, \",\", 1, NULL) can't explode", 0 != 1);
+
+        sdsclear(NULL);
+        test_cond("sdsclear(NULL) can't explode", 0 != 1);
+
+        sdssetlen(NULL, 0);
+        test_cond("sdssetlen(NULL, 0) can't explode", 0 != 1);
+
+        sdsfree(y);
     }
+
     test_report()
     return 0;
 }
