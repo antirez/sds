@@ -39,8 +39,8 @@
 #ifndef __TESTHELP_H
 #define __TESTHELP_H
 
-int __failed_tests = 0;
-int __test_num = 0;
+static int __failed_tests = 0;
+static int __test_num = 0;
 #define test_cond(descr,_c) do { \
     __test_num++; printf("%d - %s: ", __test_num, descr); \
     if(_c) printf("PASSED\n"); else {printf("FAILED\n"); __failed_tests++;} \
