@@ -407,7 +407,7 @@ that is not in the list of characters to trim: this is why the space between
 `"my"` and `"string"` was preserved in the above example.
 
 Taking ranges is similar, but instead to take a set of characters, it takes
-to indexes, representing the start and the end as specified by zero-based
+two indexes, representing the start and the end as specified by zero-based
 indexes inside the string, to obtain the range that will be retained.
 
 ```c
