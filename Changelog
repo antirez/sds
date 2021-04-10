@@ -1,3 +1,8 @@
+Version 2.1
+===
+* add sdssds() function that finds the first occurrence of the sds substring needle in the sds string haystack.
+* add sdscasesds() function that work like sdssds() but ignore the case of both sds strings.
+
 Version 2.0
 ===
 
