@@ -88,7 +88,7 @@ the SDS string will result in a bug.
 
 **Disadvantage #2**: if an SDS string is shared in different places in your program you have to modify all the references when you modify the string. However most of the times when you need to share SDS strings it is much better to encapsulate them into structures with a `reference count` otherwise it is too easy to incur into memory leaks.
 
-**Advantage #1**: you can pass SDS strings to functions designed for C functions without accessing a struct member or calling a function, like this:
+**Advantage #1**: you can pass SDS strings to functions designed for C strings without accessing a struct member or calling a function, like this:
 
 ```c
 printf("%s\n", sds_string);
