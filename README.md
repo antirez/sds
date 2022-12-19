@@ -390,7 +390,7 @@ remove characters from the original string.
 Because of this behavior, both functions are fast and don't involve reallocation.
 
 This is an example of string trimming where newlines and spaces are removed
-from an SDS strings:
+from an SDS string:
 
 ```c
 sds s = sdsnew("         my string\n\n  ");
@@ -503,7 +503,7 @@ SDS library, since you can simply create a new SDS string from scratch
 with the new value instead of copying the value in an existing SDS string.
 The reason is efficiency: `sdsnewlen` will always allocate a new string
 while `sdscpylen` will try to reuse the existing string if there is enough
-room to old the new content specified by the user, and will allocate a new
+room to hold the new content specified by the user, and will allocate a new
 one only if needed.
 
 Quoting strings
@@ -512,7 +512,7 @@ Quoting strings
 In order to provide consistent output to the program user, or for debugging
 purposes, it is often important to turn a string that may contain binary
 data or special characters into a quoted string. Here for quoted string
-we mean the common format for String literals in programming source code.
+we mean the common format for string literals in programming source code.
 However today this format is also part of the well known serialization formats
 like JSON and CSV, so it definitely escaped the simple goal of representing
 literals strings in the source code of programs.
@@ -578,7 +578,7 @@ A more common separator that consists of a single character is the comma:
 foo,bar,zap
 ```
 
-In many progrems it is useful to process a line in order to obtain the sub
+In many programs it is useful to process a line in order to obtain the sub
 strings it is composed of, so SDS provides a function that returns an
 array of SDS strings given a string and a separator.
 
@@ -698,7 +698,7 @@ SDS internals and advanced usage
 
 At the very beginning of this documentation it was explained how SDS strings
 are allocated, however the prefix stored before the pointer returned to the
-user was classified as an *header* without further details. For an advanced
+user was classified as a *header* without further details. For an advanced
 usage it is better to dig more into the internals of SDS and show the
 structure implementing it:
 
@@ -911,7 +911,7 @@ The API to access the allocator used by SDS is composed of three functions: `sds
 Credits and license
 ===
 
-SDS was created by Salvatore Sanfilippo and is released under the BDS two clause license. See the LICENSE file in this source distribution for more information.
+SDS was created by Salvatore Sanfilippo and is released under the BSD two clause license. See the LICENSE file in this source distribution for more information.
 
 Oran Agra improved SDS version 2 by adding dynamic sized headers in order to
 save memory for small strings and allow strings greater than 4GB.
