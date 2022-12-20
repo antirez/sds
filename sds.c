@@ -643,6 +643,11 @@ sds sdscatfmt(sds s, char const *fmt, ...) {
             if (next == '\0') break;
             f++;
             switch(next) {
+            case 'c':
+                num = va_arg(ap,int);
+                s[i++] = num;
+                sdsinclen(s,1);
+                break;
             case 's':
             case 'S':
                 str = va_arg(ap,char*);
