@@ -407,13 +407,13 @@ that is not in the list of characters to trim: this is why the space between
 `"my"` and `"string"` was preserved in the above example.
 
 Taking ranges is similar, but instead to take a set of characters, it takes
-to indexes, representing the start and the end as specified by zero-based
+two indexes, representing the start and the end as specified by zero-based
 indexes inside the string, to obtain the range that will be retained.
 
 ```c
 sds s = sdsnew("Hello World!");
 sdsrange(s,1,4);
-printf("-%s-\n");
+printf("-%s-\n",s);
 
 output> -ello-
 ```
@@ -424,9 +424,9 @@ string, so that `-1` means the last character, `-2` the penultimate, and so fort
 ```c
 sds s = sdsnew("Hello World!");
 sdsrange(s,6,-1);
-printf("-%s-\n");
+printf("-%s-\n",s);
 sdsrange(s,0,-2);
-printf("-%s-\n");
+printf("-%s-\n",s);
 
 output> -World!-
 output> -World-
@@ -453,7 +453,7 @@ Every time the socket of the node we want to send the message to is writable
 we attempt to write as much bytes as possible, and we use `sdsrange` in order
 to remove from the buffer what was already sent.
 
-The function to queue new messages to send to some node in the cluster will
+The function to queue new messages to send to some node in the cluster and will
 simply use `sdscatlen` in order to put more data in the send buffer.
 
 Note that the Redis Cluster bus implements a binary protocol, but since SDS
@@ -541,9 +541,9 @@ or binary data. The following is an example usage:
 ```c
 sds s1 = sdsnew("abcd");
 sds s2 = sdsempty();
-s[1] = 1;
-s[2] = 2;
-s[3] = '\n';
+s1[1] = 1;
+s1[2] = 2;
+s1[3] = '\n';
 s2 = sdscatrepr(s2,s1,sdslen(s1));
 printf("%s\n", s2);
 
@@ -565,7 +565,7 @@ Tokenization
 
 Tokenization is the process of splitting a larger string into smaller strings.
 In this specific case, the split is performed specifying another string that
-acts as separator. For example in the following string there are two substrings
+acts as separator. For example in the following string there are three substrings
 that are separated by the `|-|` separator:
 
 ```
@@ -587,7 +587,7 @@ sds *sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count
 void sdsfreesplitres(sds *tokens, int count);
 ```
 
-As usually the function can work with both SDS strings or normal C strings.
+As usual the function can work with both SDS strings or normal C strings.
 The first two arguments `s` and `len` specify the string to tokenize, and the
 other two arguments `sep` and `seplen` the separator to use during the
 tokenization. The final argument `count` is a pointer to an integer that will
@@ -791,7 +791,7 @@ output> 109
 output> 59
 ```
 
-NOTE: SDS Low level API use cammelCase in order to warn you that you are playing with the fire.
+NOTE: SDS Low level API use cammelCase in order to warn you that you are playing with the fire 🔥.
 
 Manual modifications of SDS strings
 ---
@@ -809,9 +809,9 @@ information for the specified string to the length obtained via `strlen`.
 ```c
 sds s = sdsnew("foobar");
 s[2] = '\0';
-printf("%d\n", sdslen(s));
+printf("%d\n", (int)sdslen(s));
 sdsupdatelen(s);
-printf("%d\n", sdslen(s));
+printf("%d\n", (int)sdslen(s));
 
 output> 6
 output> 2
