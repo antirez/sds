@@ -911,7 +911,7 @@ The API to access the allocator used by SDS is composed of three functions: `sds
 Credits and license
 ===
 
-SDS was created by Salvatore Sanfilippo and is released under the BDS two clause license. See the LICENSE file in this source distribution for more information.
+SDS was created by Salvatore Sanfilippo and is released under the BSD two clause license. See the LICENSE file in this source distribution for more information.
 
 Oran Agra improved SDS version 2 by adding dynamic sized headers in order to
 save memory for small strings and allow strings greater than 4GB.
