@@ -156,6 +156,28 @@ sds sdsnew(const char *init) {
     return sdsnewlen(init, initlen);
 }
 
+/* Create a new binary sds from hexadecimal string representation.
+ * hexstr MUST be NULL terminated, of even length, with lower-case hex 
+ * letters and may begin with '0x' */
+sds sdsnewbin(const char* hexstr) {
+  size_t sz = strlen(hexstr);
+  if (sz % 2) return NULL;
+  sds         val = sdsnewlen(SDS_NOINIT, sz / 2);
+  const char* pos = hexstr;
+  if (pos[0] == '0' && pos[1] == 'x') {
+    pos += 2;
+    sz -= 2;
+  }
+  for (size_t i = 0; i < sz / 2; i++) {
+    if (sscanf(pos, "%2hhx", &val[i]) != 1) {
+      sdsfree(val);
+      return NULL;
+    }
+    pos += 2;
+  }
+  return val;
+}
+
 /* Duplicate an sds string. */
 sds sdsdup(const sds s) {
     return sdsnewlen(s, sdslen(s));
