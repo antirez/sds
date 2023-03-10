@@ -48,7 +48,7 @@ modified in order to be suitable for high performance operations. Now it was
 extracted from Redis and forked as a stand alone project.
 
 Because of its many years life inside Redis, SDS provides both higher level
-functions for easy strings manipulation in C, but also a set of low level
+functions for easy strings manipulation in C, but also a set of low-level
 functions that make it possible to write high performance code without paying
 a penalty for using an higher level string library.
 
@@ -106,7 +106,7 @@ Or:
 printf("%s\n", getStringPointer(string));
 ```
 
-**Advantage #2**: accessing individual chars is straightforward. C is a low level language so this is an important operation in many programs. With SDS strings accessing individual chars is very natural:
+**Advantage #2**: accessing individual chars is straightforward. C is a low-level language so this is an important operation in many programs. With SDS strings accessing individual chars is very natural:
 
 ```c
 printf("%c %c\n", s[0], s[1]);
@@ -791,7 +791,7 @@ output> 109
 output> 59
 ```
 
-NOTE: SDS Low level API use cammelCase in order to warn you that you are playing with the fire.
+NOTE: SDS low-level API use cammelCase in order to warn you that you are playing with the fire.
 
 Manual modifications of SDS strings
 ---
@@ -862,7 +862,7 @@ Zero copy append from syscalls
 
 At this point you should have all the tools to dig more inside the SDS
 library by reading the source code, however there is an interesting pattern
-you can mount using the low level API exported, that is used inside Redis
+you can mount using the low-level API exported, that is used inside Redis
 in order to improve performances of the networking code.
 
 Using `sdsIncrLen()` and `sdsMakeRoomFor()` it is possible to mount the
@@ -911,7 +911,7 @@ The API to access the allocator used by SDS is composed of three functions: `sds
 Credits and license
 ===
 
-SDS was created by Salvatore Sanfilippo and is released under the BDS two clause license. See the LICENSE file in this source distribution for more information.
+SDS was created by Salvatore Sanfilippo and is released under the BSD two clause license. See the LICENSE file in this source distribution for more information.
 
 Oran Agra improved SDS version 2 by adding dynamic sized headers in order to
 save memory for small strings and allow strings greater than 4GB.
