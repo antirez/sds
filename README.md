@@ -503,7 +503,7 @@ SDS library, since you can simply create a new SDS string from scratch
 with the new value instead of copying the value in an existing SDS string.
 The reason is efficiency: `sdsnewlen` will always allocate a new string
 while `sdscpylen` will try to reuse the existing string if there is enough
-room to old the new content specified by the user, and will allocate a new
+room to hold the new content specified by the user, and will allocate a new
 one only if needed.
 
 Quoting strings
@@ -541,9 +541,9 @@ or binary data. The following is an example usage:
 ```c
 sds s1 = sdsnew("abcd");
 sds s2 = sdsempty();
-s[1] = 1;
-s[2] = 2;
-s[3] = '\n';
+s1[1] = 1;
+s1[2] = 2;
+s1[3] = '\n';
 s2 = sdscatrepr(s2,s1,sdslen(s1));
 printf("%s\n", s2);
 
