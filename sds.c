@@ -763,7 +763,7 @@ void sdsrange(sds s, ssize_t start, ssize_t end) {
     }
     if (end < 0) {
         end = len+end;
-        if (end < 0) end = 0;
+        if (end < -1) end = -1;
     }
     newlen = (start > end) ? 0 : (end-start)+1;
     if (newlen != 0) {
