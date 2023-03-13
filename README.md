@@ -47,7 +47,7 @@ later it was moved into Redis where it is used extensively and where it was
 modified in order to be suitable for high performance operations. Now it was
 extracted from Redis and forked as a stand alone project.
 
-Because of its many years life inside Redis, SDS provides both higher level
+Because of its many years of life inside Redis, SDS provides both higher level
 functions for easy strings manipulation in C, but also a set of low level
 functions that make it possible to write high performance code without paying
 a penalty for using an higher level string library.
