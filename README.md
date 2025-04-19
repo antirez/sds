@@ -464,7 +464,7 @@ buffers that are easy to manage.
 String copying
 ---
 
-The most dangerous and infamus function of the standard C library is probably
+The most dangerous and infamous function of the standard C library is probably
 `strcpy`, so perhaps it is funny how in the context of better designed dynamic
 string libraries the concept of copying strings is almost irrelevant. Usually
 what you do is to create strings with the content you want, or concatenating
