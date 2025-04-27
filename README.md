@@ -171,6 +171,9 @@ There are many ways to create SDS strings:
   Note: `sdslen` return value is casted to `int` because it returns a `size_t`
 type. You can use the right `printf` specifier instead of casting.
 
+  Note: If the first argument to `sdsnewlen` is `0`, it will zero-initialize the
+string's memory. This way you can create an empty buffer of a certain length.
+
 * The `sdsempty()` function creates an empty zero-length string:
 
     ```c
