@@ -541,9 +541,9 @@ or binary data. The following is an example usage:
 ```c
 sds s1 = sdsnew("abcd");
 sds s2 = sdsempty();
-s[1] = 1;
-s[2] = 2;
-s[3] = '\n';
+s1[1] = 1;
+s1[2] = 2;
+s1[3] = '\n';
 s2 = sdscatrepr(s2,s1,sdslen(s1));
 printf("%s\n", s2);
 
