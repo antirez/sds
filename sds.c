@@ -1315,6 +1315,20 @@ int sdsTest(void) {
 
             sdsfree(x);
         }
+
+        x = sdsnew("0FoO1bar\n");
+        sdstolower(x);
+        test_cond("sdstolower(...)",
+            memcmp(x,"0foo1bar\n\0",10) == 0)
+
+        sdsfree(x);
+
+        x = sdsnew("0FoO1bar\n");
+        sdstoupper(x);
+        test_cond("sdstoupper(...)",
+            memcmp(x,"0FOO1BAR\n\0",10) == 0)
+
+        sdsfree(x);
     }
     test_report()
     return 0;
