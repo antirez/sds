@@ -227,7 +227,12 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
     if (type == SDS_TYPE_5) type = SDS_TYPE_8;
 
     hdrlen = sdsHdrSize(type);
-    assert(hdrlen + newlen + 1 > reqlen); /* Catch size_t overflow */
+
+    if (hdrlen + newlen + 1 < reqlen)
+    {
+      return NULL; 
+    }
+
     if (oldtype==type) {
         newsh = s_realloc(sh, hdrlen+newlen+1);
         if (newsh == NULL) return NULL;
