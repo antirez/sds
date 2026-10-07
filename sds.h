@@ -36,9 +36,14 @@
 #define SDS_MAX_PREALLOC (1024*1024)
 extern const char *SDS_NOINIT;
 
-#include <sys/types.h>
 #include <stdarg.h>
 #include <stdint.h>
+#ifdef _WIN32
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#else
+#include <sys/types.h>
+#endif
 
 typedef char *sds;
 
