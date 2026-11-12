@@ -541,9 +541,9 @@ or binary data. The following is an example usage:
 ```c
 sds s1 = sdsnew("abcd");
 sds s2 = sdsempty();
-s[1] = 1;
-s[2] = 2;
-s[3] = '\n';
+s1[1] = 1;
+s1[2] = 2;
+s1[3] = '\n';
 s2 = sdscatrepr(s2,s1,sdslen(s1));
 printf("%s\n", s2);
 
@@ -578,7 +578,7 @@ A more common separator that consists of a single character is the comma:
 foo,bar,zap
 ```
 
-In many progrems it is useful to process a line in order to obtain the sub
+In many programs it is useful to process a line in order to obtain the sub
 strings it is composed of, so SDS provides a function that returns an
 array of SDS strings given a string and a separator.
 
